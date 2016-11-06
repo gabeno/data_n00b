@@ -80,37 +80,26 @@ purchases$product_code <- unlist(lapply(purchases$Product.code...number, functio
 purchases$product_number <- unlist(lapply(purchases$Product.code...number, function(c){ unlist(strsplit(c, '-'))[2] }))
 
 # add category
-add.cat <- function(p_code) {
-    if (p_code == 'p') {
-        'Smartphone'
-    } else if (p_code == 'v') {
-        'TV'
-    } else if (p_code == 'x') {
-        'Laptop'
-    } else if (p_code == 'q') {
-        'Tablet'
-    }
-}
-purchases$category <- unlist(lapply(purchases$product_code, function(c){ add.cat(c) }))
+# purchases$category <- unlist(lapply(purchases$product_code, function(c){ add.cat(c) }))
+purchases <- purchases %>% mutate(category=ifelse(product_code=='p', 'Smartphone',
+                                     ifelse(product_code=='v', 'TV',
+                                            ifelse(product_code=='x', 'Laptop', 'Tablet'))))
 
 # add full_address
-purchases$full_address <- paste(purchases$address, purchases$city, purchases$country, sep=',')
+#purchases$full_address <- paste(purchases$address, purchases$city, purchases$country, sep=',')
+purchases <- purchases %>% mutate(full_address=paste(address, city, country, sep=','))
 
 # add company dummy variables
-dummy.var <- function(col, name) {
-    lapply(col==name, as.numeric)
-}
-
-purchases$company_philips <- dummy.var(purchases$company, 'philips')
-purchases$company_akzo <- dummy.var(purchases$company, 'akzo')
-purchases$company_van_houten <- dummy.var(purchases$company, 'van houten')
-purchases$company_unilever <- dummy.var(purchases$company, 'unilever')
+purchases <- purchases %>% mutate(company_philips=ifelse(company=='philips', 1, 0))
+purchases <- purchases %>% mutate(company_akzo=ifelse(company=='akzo', 1, 0))
+purchases <- purchases %>% mutate(company_van_houten=ifelse(company=='van houten', 1, 0))
+purchases <- purchases %>% mutate(company_unilever=ifelse(company=='unilever', 1, 0))
 
 # add product dummy variables
-purchases$product_smartphone <- dummy.var(purchases$category, 'Smartphone')
-purchases$product_tv <- dummy.var(purchases$category, 'TV')
-purchases$product_laptop <- dummy.var(purchases$category, 'Laptop')
-purchases$product_tablet <- dummy.var(purchases$category, 'Tablet')
+purchases <- purchases %>% mutate(product_smartphone=ifelse(category=='Smartphone', 1, 0))
+purchases <- purchases %>% mutate(product_tv=ifelse(category=='TV', 1, 0))
+purchases <- purchases %>% mutate(product_laptop=ifelse(category=='Laptop', 1, 0))
+purchases <- purchases %>% mutate(product_tablet=ifelse(category=='Tablet', 1, 0))
 
 # write to file
 write.csv(purchases, file='./refine_clean.csv', row.names=FALSE)
