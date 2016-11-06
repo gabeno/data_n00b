@@ -111,3 +111,6 @@ purchases$product_smartphone <- dummy.var(purchases$category, 'Smartphone')
 purchases$product_tv <- dummy.var(purchases$category, 'TV')
 purchases$product_laptop <- dummy.var(purchases$category, 'Laptop')
 purchases$product_tablet <- dummy.var(purchases$category, 'Tablet')
+
+# write to file
+write.csv(purchases, file='./refine_clean.csv', row.names=FALSE)
