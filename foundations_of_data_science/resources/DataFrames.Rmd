@@ -1,0 +1,256 @@
+---
+title: "Common Data Frame Operations"
+author: "Alvaro Fuentes"
+output: html_document
+---
+## Loading data from a CSV file.
+
+Let's load some existing data from a CSV file.
+
+```{r, warning=FALSE, message=FALSE}
+# Loading libraries
+library(dplyr)
+
+# Loading an existing data frame
+path_to_file <- 'https://raw.githubusercontent.com/quantcompany/Springboard_FDS/master/DiabetesR.csv'
+
+diabetes <- read.csv(path_to_file, stringsAsFactors = FALSE)
+```
+
+# Inspecting the Data Frame
+
+```{r, warning=FALSE, message=FALSE}
+head(diabetes)
+tail(diabetes)
+names(diabetes)
+dim(diabetes)
+View(diabetes)
+str(diabetes)
+summary(diabetes)
+
+# Transforming to tbl_df for nice printing
+
+diabetes <- tbl_df(diabetes)
+diabetes
+```
+
+# Dealing with factors
+
+Some of the columns (variables) in this data frame are known to be factors: `gender` and `frame`. Notice that the values of the variable `frame` have a natural order: small, medium and large.
+
+```{r}
+#In both examples notice the distinction between levels and labels.
+
+diabetes$gender <- factor(diabetes$gender,
+                          levels = c("male","female"),
+                          labels = c("Male","Female"))
+
+diabetes$frame <- factor(diabetes$frame, 
+                         levels = c("small","medium","large"),
+                         labels = c("Small","Medium","Large"),
+                         ordered = TRUE)
+```
+
+EXERCISES:
+
+> 1. Create a new factor variable called "high_cholesterol" with the values "Yes" if Cholesterol >= 230 and "No" otherwise
+
+# Summaries and other simple operations
+
+```{r}
+#Changing the name of a variable (column)
+names(diabetes)[3] <- "stab.glucose"
+names(diabetes)
+
+# Number of NA's per column and row
+
+apply(diabetes, MARGIN = 2, function(x) sum(is.na(x))) #cols
+apply(diabetes, MARGIN = 1, function(x) sum(is.na(x))) #rows
+
+# Deleting a column
+ncol(diabetes)
+diabetes$glyhb <- NULL
+ncol(diabetes)
+names(diabetes)
+
+# Creating a column
+diabetes$random <- round(rnorm(n = nrow(diabetes)),2)
+
+```
+
+EXERCISES:
+
+> 1. For consistency, change the name of the variable "Cholesterol" to "cholesterol"
+> 2. Rename the variable variable "height" to "height_in"
+> 3. Create the variable "height_cm" by multiplying "hight_in" by 2.54.
+> 4. Delete the 'random' column.
+
+
+# Selecting elements from a data frame
+
+```{r}
+# Getting one column
+diabetes$hdl  # vector
+diabetes[['hdl']]  # vector
+diabetes['hdl'] # data frame of one column
+
+# Selecting multiple columns: the result is another data frame
+diabetes[c('hdl','age','frame')]
+# The dplyr way
+select(diabetes, hdl, age, frame) #dplyr
+
+# Getting one cell
+diabetes[2,2]
+diabetes[2,'hdl']
+
+# Getting a sub table
+diabetes[10:25,c('hdl','age','frame')]
+diabetes[10:25,c(3,6,10)]
+# The dplyr way
+select(diabetes, Cholesterol, age, frame) %>% slice(10:25) 
+
+# Logical Filtering
+diabetes[diabetes$age >= 60 & diabetes$gender=='male',] # Empty means 'everything'
+
+# The dplyr way
+filter(diabetes, age >= 60, gender == 'male')
+```
+
+EXERCISES:
+
+> 1. Create a new data frame that contains only the variables: height_cm, weight and gender, store it in a variable called heights_weights.
+> 2. Create a data frame that contains all the data of women who are older than 40 and have a small frame. Choose an appropiate name for the variable.
+> 3. Create a data frame that contains all the data (except the gender) of the patients with the following ids: 20368 40773 17841 15500 41001  4750  1315  4801
+
+## Useful operations
+
+```{r}
+#Spliting 
+diabetes_by_frame <- split(diabetes, f = diabetes$frame)
+head(diabetes_by_frame$Small)
+
+#Binding two data frames
+diabetes_no_small <- rbind(diabetes_by_frame$Medium, diabetes_by_frame$Large)
+
+# Some annoying things can happen with factors and its levels.
+table(diabetes_no_small$frame)
+
+# This drops the levels with zero count
+diabetes_no_small$frame <- factor(diabetes_no_small$frame)
+table(diabetes_no_small$frame)
+
+# Sorting
+head(diabetes[order(diabetes$hdl,
+                    decreasing = TRUE),1:5],10)
+
+# Using dplyr
+arrange(diabetes, hdl) %>% slice(1:10)
+arrange(diabetes, desc(hdl)) %>% slice(1:10) #dplyr
+
+# Tip: If you get tired of typing diabetes$VariableName
+attach(diabetes)
+detach(diabetes) #When done
+```
+
+EXERCISES:
+
+> 1. Get the ids of the 10 patients with the highest and lowest cholesterol levels (20 patients in total).
+> 2. Get the ids of the 10 male patients with the highest and lowest cholesterol levels (20 patients in total), do the same with for the female patients. Bind the two data frames and call them extreme_cholesterol.
+
+## Calculations: Summaries, counts, etc.
+
+Here we show some common calculations that are performed on data frames. For a more in depth view of these topics take a look at the [dplyr vignette](https://cran.rstudio.com/web/packages/dplyr/vignettes/introduction.html)
+
+```{r, warning=FALSE}
+# Getting the means of the numeric variables
+numeric_vars <- sapply(diabetes,is.numeric)
+means_diabetes <- sapply(diabetes[,numeric_vars], mean, na.rm = TRUE)
+
+means_diabetes
+
+# Summary stats by a categorical variable
+
+# Grouping by a single categorical variable
+select(diabetes, hdl, frame) %>%
+    group_by(frame) %>%
+    summarise(
+        mean_hdl = mean(hdl, na.rm = TRUE),
+        sd_hdl = sd(hdl, na.rm = TRUE),
+        min_hdl = min(hdl, na.rm = TRUE),
+        max_hdl = max(hdl, na.rm = TRUE)
+        )
+
+# It is also posible to group by more than one categorical variable
+select(diabetes, hdl, frame, gender) %>%
+    group_by(frame, gender) %>%
+    summarise(
+        mean_hdl = mean(hdl, na.rm = TRUE),
+        sd_hdl = sd(hdl, na.rm = TRUE),
+        min_hdl = min(hdl, na.rm = TRUE),
+        max_hdl = max(hdl, na.rm = TRUE)
+        )
+
+# Another approach using the base-R functions
+tapply(X = diabetes$hdl, FUN = summary, INDEX = diabetes$frame)
+# Again grouping by more than one categorical variable
+tapply(X = diabetes$hdl, 
+       FUN = summary,
+       INDEX = interaction(diabetes$frame, diabetes$gender)
+       )
+```
+
+# A quick visualization of the data frame
+
+```{r, warning=FALSE, fig.height=6, fig.width=8}
+fast_viz <- function(df){
+    par(mfrow=c(2,2))
+    vars <- names(df)
+    numeric_vars <- sapply(df,is.numeric)
+    factor_vars <-  sapply(df,is.factor)
+    
+    for(var in vars[numeric_vars]){
+        hist(df[[var]], main = var, xlab = var)
+    }
+    
+    for(var in vars[factor_vars]){
+        barplot(table(df[[var]]), main = var, xlab = var)
+    }
+    par(mfrow=c(1,1))
+}
+
+fast_viz(diabetes)
+```
+
+# A (fancier) quick visualization of the data frame
+
+```{r, warning=FALSE, fig.height=6, fig.width=8}
+fast_viz_fancy <- function(df){
+    require(ggplot2)
+    vars <- names(df)
+    numeric_vars <- sapply(df,is.numeric)
+    factor_vars <-  sapply(df,is.factor)
+    
+    for(var in vars[numeric_vars]){
+        p <- ggplot(df) + 
+                geom_histogram(aes_string(var),
+                               fill = 'steelblue2',
+                               color = 'black') +
+                ggtitle(var) +
+                theme_bw()
+        print(p)
+    }
+    
+    for(var in vars[factor_vars]){
+        p <- ggplot(df) + 
+                geom_bar(aes_string(var),
+                         stat = 'count',
+                         fill = 'steelblue2') +
+                ggtitle(var) +
+                theme_bw()
+        print(p)
+    }
+}
+
+fast_viz_fancy(diabetes)
+```
+
