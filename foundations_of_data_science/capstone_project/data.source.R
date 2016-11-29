@@ -48,14 +48,14 @@ pages <- function(page=1) {
 }
 
 total_pages <- pages()
-get.data <- function(pages) {
-    for (page in 1:pages) {
+get.data <- function(from=1, to=1) {
+    for (page in from:to) {
         loans <- fetch.data(page)
         save.data(loans$loans, page)
     }
 }
 
-get.data(total_pages)
+get.data(from=2450, to=total_pages)
 
 
 
