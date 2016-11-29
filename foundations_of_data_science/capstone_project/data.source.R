@@ -7,54 +7,68 @@ library(dplyr)
 
 # the api returns data with a list and data frame
 # the data we need is in the data frame
-# the lost contains some meta data
-# > loans.1 <- fromJSON('http://api.kivaws.org/v1/loans/search.json?page=1')
-# > names(loans.1)
-# [1] "paging" "loans"
-# [1] "paging" "loans" 
-# > loans.1$paging
-# $page
-# [1] 1
-# $total
-# [1] 1151728
-# $page_size
-# [1] 20
-# $pages
-# [1] 57587
 
 # strategy is to write to disk already chunked data (by page)
 # more efficient in terms of memory resource
 
-# tags, themes, description.languages
+setwd("~/projects/data_science_projects/data_n00b/foundations_of_data_science/capstone_project")
+combine <- function(u, v) { paste(u, v, sep=', ') }
 
 fetch.data <- function(page) {
     url = 'http://api.kivaws.org/v1/loans/search.json?page=_'
     endpoint = sub('_', page, url)
-    print(endpoint)
+    print(paste('fetching data for =>', endpoint))
     loans <- fromJSON(endpoint, flatten = TRUE)
+    # unpack tags from list
+    loans$loans$tags <- unlist(
+        lapply(loans$loans$tags, function(data) {
+            ifelse(is.null(data[['name']]),
+                   NA,
+                   Reduce(comb, c(data[['name']]))) }))
+    # unpack themes from list
+    loans$loans$themes <- unlist(
+        lapply(loans$loans$themes, function(data) {
+            ifelse(is.null(data), NA, Reduce(comb, data)) }))
+    # unpack languages from list
+    loans$loans$description.languages <- unlist(
+        lapply(loans.1$loans$description.languages, function(data) {
+            ifelse(is.null(data), NA, Reduce(comb, data)) }))
     loans
 }
 
-fetch.metadata <- function() {
-    data <- fromJSON('http://api.kivaws.org/v1/loans/search.json?page=1')
-    data$paging
+save.data <- function(obj, page) {
+    path = sub('_', page, './dataset/loans._.csv')
+    write.csv(obj, path, row.names = FALSE, sep = '', fileEncoding = 'utf8')
+    print(paste('Data saved ... ', path))
 }
 
-metadata = fetch.metadata()
-total.pages = metadata$pages
+pages <- function(page=1) {
+    metadata <- fetch.data(page)
+    metadata$paging$pages
+}
 
-for (n in 1:total.pages) {
-    # sprintf('%.2f%% done', (n/total.pages)*100) not executing ??
-    if (n==1) {
-        page_1 <- fetch.data(n)
-        loans <- page_1$loans
-    } else {
-        new_df <- fetch.data(n)
+total_pages <- pages()
+get.data <- function(pages) {
+    for (page in 1:pages) {
+        loans <- fetch.data(page)
+        save.data(loans$loans, page)
     }
-    loans <- merge(loans, new_df$loans, all=TRUE)
 }
 
-# transform fields as lists to character vectors
+get.data(total_pages)
+
+
+
+
+
+
+
+# ------------------------------------ PLAY ------------------------------------
+
+loans.40 <- fetch.data(40)
+tbl_df(loans.1$loans)
+
+# tags, themes, description.languages - fields with list
 
 # > glimpse(loans)
 # Observations: 42
@@ -86,10 +100,301 @@ for (n in 1:total.pages) {
 # $ location.geo.pairs       (chr) "39 71", "39 71", "41 75", "13 -85", "13 122", "13 122", "12 104.5", "33.833333 35.833333", "31.92157 3...
 # $ location.geo.type        (chr) "point", "point", "point", "point", "point", "point", "point", "point", "point", "point", "point", "poi...
 
-# problematic variables: tags, themes and description.languages
-loans <- loans %>% mutate(tags=as.character(tags))
-loans <- loans %>% mutate(themes=as.character(themes))
-loans <- loans %>% mutate(description.languages=as.character(description.languages))
+# tags
+# ----
+# "tags":[{"name":"#Woman Owned Biz"},{"name":"#Animals"},{"name":"#Parent"},{"name":"#Single Parent"}]}
+# > tags
+# [[1]]
+# name
+# 1     #First Loan
+# 2 #Sustainable Ag
+# 3   #Eco-friendly
+# 4          #Vegan
+# 5         #Parent
+# 6      #Schooling
+# 7     #Technology
+# 
+# [[2]]
+# data frame with 0 columns and 0 rows
+# 
+# [[3]]
+# name
+# 1 #Fabrics
+# 
+# [[4]]
+# name
+# 1 #Woman Owned Biz
+# 2         #Animals
+# 3          #Parent
+# 4   #Single Parent
+# 
+# [[5]]
+# name
+# 1 user_favorite
+# 2    #Schooling
+# 
+# [[6]]
+# name
+# 1 #Repeat Borrower
+# 
+# [[7]]
+# data frame with 0 columns and 0 rows
+# 
+# [[8]]
+# name
+# 1 #Job Creator
+# 
+# [[9]]
+# name
+# 1          user_favorite
+# 2          #Eco-friendly
+# 3 #Health and Sanitation
+# 4            #Technology
+# 
+# [[10]]
+# name
+# 1 #Woman Owned Biz
+# 2          #Parent
+# 3 #Repeat Borrower
+# 
+# [[11]]
+# name
+# 1 #Woman Owned Biz
+# 
+# [[12]]
+# name
+# 1       #Animals
+# 2        #Parent
+# 3 #Single Parent
+# 4     #Schooling
+# 
+# [[13]]
+# name
+# 1 user_favorite
+# 2    #Schooling
+# 
+# [[14]]
+# data frame with 0 columns and 0 rows
+# 
+# [[15]]
+# name
+# 1 user_favorite
+# 2   #First Loan
+# 3 #Eco-friendly
+# 4       #Parent
+# 5   #Technology
+# 
+# [[16]]
+# name
+# 1          user_favorite
+# 2          #Eco-friendly
+# 3 #Health and Sanitation
+# 4            #Technology
+# 
+# [[17]]
+# name
+# 1          user_favorite
+# 2          #Eco-friendly
+# 3 #Health and Sanitation
+# 4            #Technology
+# 
+# [[18]]
+# name
+# 1 user_favorite
+# 2    #Schooling
+# 
+# [[19]]
+# data frame with 0 columns and 0 rows
+# 
+# [[20]]
+# name
+# 1 user_favorite
 
-# write to file
-write.csv(loans, "./dataset/loans.csv", row.names = FALSE, sep = '', fileEncoding = 'utf8')
+loans.1$loans$tags <- unlist(
+    lapply(
+        loans.1$loans$tags,
+        function(data) {
+            ifelse(is.null(data[['name']]), NA, Reduce(comb, c(data[['name']]))) # treat dataframe
+        }))
+# > unlist(lapply(loans.1$loans$tags, function(data) { ifelse(is.null(data[['name']]), NA, Reduce(comb, c(data[['name']]))) }))
+# [1] "#First Loan, #Sustainable Ag, #Eco-friendly, #Vegan, #Parent, #Schooling, #Technology"
+# [2] NA                                                                                     
+# [3] "#Fabrics"                                                                             
+# [4] "#Woman Owned Biz, #Animals, #Parent, #Single Parent"                                  
+# [5] "user_favorite, #Schooling"                                                            
+# [6] "#Repeat Borrower"                                                                     
+# [7] NA                                                                                     
+# [8] "#Job Creator"                                                                         
+# [9] "user_favorite, #Eco-friendly, #Health and Sanitation, #Technology"                    
+# [10] "#Woman Owned Biz, #Parent, #Repeat Borrower"                                          
+# [11] "#Woman Owned Biz"                                                                     
+# [12] "#Animals, #Parent, #Single Parent, #Schooling"                                        
+# [13] "user_favorite, #Schooling"                                                            
+# [14] NA                                                                                     
+# [15] "user_favorite, #First Loan, #Eco-friendly, #Parent, #Technology"                      
+# [16] "user_favorite, #Eco-friendly, #Health and Sanitation, #Technology"                    
+# [17] "user_favorite, #Eco-friendly, #Health and Sanitation, #Technology"                    
+# [18] "user_favorite, #Schooling"                                                            
+# [19] NA                                                                                     
+# [20] "user_favorite"
+
+
+# themes
+# ------
+# raw sample: "themes":["Fair Trade","Green"]
+# > loans.1$loans$themes
+# [[1]]
+# [1] "Green"           "Rural Exclusion"
+# 
+# [[2]]
+# NULL
+# 
+# [[3]]
+# [1] "Underfunded Areas"
+# 
+# [[4]]
+# [1] "Vulnerable Groups" "Underfunded Areas"
+# 
+# [[5]]
+# [1] "Higher Education"
+# 
+# [[6]]
+# NULL
+# 
+# [[7]]
+# [1] "Fair Trade" "Green"     
+# 
+# [[8]]
+# [1] "Conflict Zones"    "Underfunded Areas" "Rural Exclusion"  
+# 
+# [[9]]
+# [1] "Water and Sanitation"
+# 
+# [[10]]
+# NULL
+# 
+# [[11]]
+# NULL
+# 
+# [[12]]
+# [1] "Vulnerable Groups" "Underfunded Areas"
+# 
+# [[13]]
+# [1] "Higher Education"
+# 
+# [[14]]
+# NULL
+# 
+# [[15]]
+# [1] "Green"
+# 
+# [[16]]
+# [1] "Water and Sanitation"
+# 
+# [[17]]
+# [1] "Water and Sanitation"
+# 
+# [[18]]
+# [1] "Higher Education"
+# 
+# [[19]]
+# [1] "Vulnerable Groups" "Conflict Zones"   
+# 
+# [[20]]
+# NULL
+
+unlist(
+    lapply(
+        loans.1$loans$themes,
+        function(data) {
+            ifelse(is.null(data), NA, Reduce(comb, data)) # treat vector
+        }))
+# > unlist(lapply(loans.1$loans$themes, function(data) { ifelse(is.null(data), NA, Reduce(comb, data)) }))
+# [1] "Green, Rural Exclusion"                             NA                                                  
+# [3] "Underfunded Areas"                                  "Vulnerable Groups, Underfunded Areas"              
+# [5] "Higher Education"                                   NA                                                  
+# [7] "Fair Trade, Green"                                  "Conflict Zones, Underfunded Areas, Rural Exclusion"
+# [9] "Water and Sanitation"                               NA                                                  
+# [11] NA                                                   "Vulnerable Groups, Underfunded Areas"              
+# [13] "Higher Education"                                   NA                                                  
+# [15] "Green"                                              "Water and Sanitation"                              
+# [17] "Water and Sanitation"                               "Higher Education"                                  
+# [19] "Vulnerable Groups, Conflict Zones"                  NA
+
+
+# description.languages
+# ---------------------
+# raw sample: "description":{"languages":["es","en"]}
+# > loans.1$loans$description.languages
+# [[1]]
+# [1] "en"
+# 
+# [[2]]
+# [1] "en"
+# 
+# [[3]]
+# [1] "en"
+# 
+# [[4]]
+# [1] "es" "en"
+# 
+# [[5]]
+# [1] "en"
+# 
+# [[6]]
+# [1] "en"
+# 
+# [[7]]
+# [1] "es" "en"
+# 
+# [[8]]
+# [1] "en"
+# 
+# [[9]]
+# [1] "en"
+# 
+# [[10]]
+# [1] "en"
+# 
+# [[11]]
+# [1] "es" "en"
+# 
+# [[12]]
+# [1] "es" "en"
+# 
+# [[13]]
+# [1] "en"
+# 
+# [[14]]
+# [1] "es" "en"
+# 
+# [[15]]
+# [1] "en"
+# 
+# [[16]]
+# [1] "en"
+# 
+# [[17]]
+# [1] "en"
+# 
+# [[18]]
+# [1] "en"
+# 
+# [[19]]
+# [1] "es" "en"
+# 
+# [[20]]
+# [1] "en"
+
+unlist(
+    lapply(
+        loans.1$loans$description.languages,
+        function(data) {
+            ifelse(is.null(data), NA, Reduce(comb, data)) # treat vector
+        }))
+# > unlist(lapply(loans.1$loans$description.languages, function(data) { ifelse(is.null(data), NA, Reduce(comb, data)) }))
+# [1] "en"     "en"     "en"     "es, en" "en"     "en"     "es, en" "en"     "en"     "en"     "es, en" "es, en"
+# [13] "en"     "es, en" "en"     "en"     "en"     "en"     "es, en" "en"
+
+# description.langauges and themes
+# 
