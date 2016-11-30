@@ -11,7 +11,9 @@ library(dplyr)
 # strategy is to write to disk already chunked data (by page)
 # more efficient in terms of memory resource
 
-setwd("~/projects/data_science_projects/data_n00b/foundations_of_data_science/capstone_project")
+dir <- getwd()
+setwd(dir)
+
 combine <- function(u, v) { paste(u, v, sep=', ') }
 
 fetch.data <- function(page) {
@@ -24,15 +26,15 @@ fetch.data <- function(page) {
         lapply(loans$loans$tags, function(data) {
             ifelse(is.null(data[['name']]),
                    NA,
-                   Reduce(comb, c(data[['name']]))) }))
+                   Reduce(combine, c(data[['name']]))) }))
     # unpack themes from list
     loans$loans$themes <- unlist(
         lapply(loans$loans$themes, function(data) {
-            ifelse(is.null(data), NA, Reduce(comb, data)) }))
+            ifelse(is.null(data), NA, Reduce(combine, data)) }))
     # unpack languages from list
     loans$loans$description.languages <- unlist(
-        lapply(loans.1$loans$description.languages, function(data) {
-            ifelse(is.null(data), NA, Reduce(comb, data)) }))
+        lapply(loans$loans$description.languages, function(data) {
+            ifelse(is.null(data), NA, Reduce(combine, data)) }))
     loans
 }
 
@@ -55,7 +57,7 @@ get.data <- function(from=1, to=1) {
     }
 }
 
-get.data(from=2450, to=total_pages)
+get.data(from=9100, to=total_pages)
 
 
 
@@ -66,7 +68,7 @@ get.data(from=2450, to=total_pages)
 # ------------------------------------ PLAY ------------------------------------
 
 loans.40 <- fetch.data(40)
-tbl_df(loans.1$loans)
+tbl_df(loans.40$loans)
 
 # tags, themes, description.languages - fields with list
 
@@ -210,11 +212,11 @@ tbl_df(loans.1$loans)
 # name
 # 1 user_favorite
 
-loans.1$loans$tags <- unlist(
+loans.40$loans$tags <- unlist(
     lapply(
-        loans.1$loans$tags,
+        loans.40$loans$tags,
         function(data) {
-            ifelse(is.null(data[['name']]), NA, Reduce(comb, c(data[['name']]))) # treat dataframe
+            ifelse(is.null(data[['name']]), NA, Reduce(combine, c(data[['name']]))) # treat dataframe
         }))
 # > unlist(lapply(loans.1$loans$tags, function(data) { ifelse(is.null(data[['name']]), NA, Reduce(comb, c(data[['name']]))) }))
 # [1] "#First Loan, #Sustainable Ag, #Eco-friendly, #Vegan, #Parent, #Schooling, #Technology"
@@ -305,9 +307,9 @@ loans.1$loans$tags <- unlist(
 
 unlist(
     lapply(
-        loans.1$loans$themes,
+        loans.40$loans$themes,
         function(data) {
-            ifelse(is.null(data), NA, Reduce(comb, data)) # treat vector
+            ifelse(is.null(data), NA, Reduce(combine, data)) # treat vector
         }))
 # > unlist(lapply(loans.1$loans$themes, function(data) { ifelse(is.null(data), NA, Reduce(comb, data)) }))
 # [1] "Green, Rural Exclusion"                             NA                                                  
@@ -388,9 +390,9 @@ unlist(
 
 unlist(
     lapply(
-        loans.1$loans$description.languages,
+        loans.40$loans$description.languages,
         function(data) {
-            ifelse(is.null(data), NA, Reduce(comb, data)) # treat vector
+            ifelse(is.null(data), NA, Reduce(combine, data)) # treat vector
         }))
 # > unlist(lapply(loans.1$loans$description.languages, function(data) { ifelse(is.null(data), NA, Reduce(comb, data)) }))
 # [1] "en"     "en"     "en"     "es, en" "en"     "en"     "es, en" "en"     "en"     "en"     "es, en" "es, en"
