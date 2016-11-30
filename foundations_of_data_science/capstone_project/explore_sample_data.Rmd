@@ -93,10 +93,13 @@ loans$image.id <- NULL
 loans$image.template_id <- NULL
 
 # get latitude and longitude from location_geo_pairs
-loans %>% separate(location.geo.pairs, into=c('location.geo.lat', 'location.geo.long'),sep=' ', remove = TRUE)
+loans <- separate(loans, location.geo.pairs, into=c('location.geo.lat', 'location.geo.long'),sep=' ', remove = TRUE)
+loans$location.geo.lat <- as.numeric(loans$location.geo.lat)
+loans$location.geo.long <- as.numeric(loans$location.geo.long)
 
 # remove loans without status
-loans <- loans[!is.na(loans$status),]
+loans_with_null_status <- loans[is.na(loans$status),]
+loans <- loans[na.omit(loans$status),]
 ```
 
 
