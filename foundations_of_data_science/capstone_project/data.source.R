@@ -11,8 +11,8 @@ library(dplyr)
 # strategy is to write to disk already chunked data (by page)
 # more efficient in terms of memory resource
 
-dir <- getwd()
-setwd(dir)
+curr_dir <- getwd()
+setwd(curr_dir)
 
 combine <- function(u, v) { paste(u, v, sep=', ') }
 
