@@ -1,0 +1,119 @@
+---
+title: "exploring_kiva_data"
+author: "Gabriel Majivu"
+date: "11/29/2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+## Libraries
+
+```{r}
+library(dplyr)
+library(readr)
+library(tidyr)
+```
+
+## Data Overview
+
+The data set used in this project is from [kiva](https://www.kiva.org/). The data has these variables:
+
+1. __id__: unique id of the borrower
+2. __name__: name of the borrower
+3. __status__: current funding status that a loan has. Options include:
+    * fundraising - The loan has not yet been funded. You can find the amount funded so far by checking _funded_amount_.
+    * funded - This loan request has been completely funded and is not available for new loans by lenders.
+    * in_repayment - The loan has been disbursed to the borrowers and they are in the process of using the funds and making payments on the loan to the field partner.
+    * paid - The loan has been paid back in full by the borrower.
+    * defaulted - A loan which has remained delinquent 6 months after the end of the loan payment schedule.
+    * refunded - Refund the funded portion of the loan to lenders after the loan has been partially funded, fully funded, or even during repayment.
+4. __funded_amount__: This is the amount of the loan which has been purchased by Kiva lenders.
+5. __basket_amount__: This is the amount of the loan which lenders have saved in shopping baskets, but has not been confirmed as purchased.
+6. __activity__: Type of activity the borrower is involved with.
+7. __sector__: Type of sector the borrower is involved in.
+8. __themes__: General themes that further categorise borrower groups
+9. __use__: Description for the purpose of the loan.
+10. __partner_id__: Unique id for the field partners
+11. __posted_date__: Date the loan was posted on the Kiva website.
+12. __planned_expiration_date__: The date the loan bid expires on the Kiva website.
+13. __loan_amount__: Amount of funding sought in a bid for a loan.
+14. __borrower_count__: ...
+15. __lender_count__: Number of lenders who have purchased a loan.
+16. __bonus_credit_eligibility__: Whether a loan application is eligible for extra credit.
+17. __tags__: Borrower chosen tags to classify their loan applications.
+18. __description.languages__: Language choice(s) for the borrower.
+19. __image.id__: ...
+20. __image.template_id__: ...
+21. __location.country_code__: Country code of borrower.
+22. __location.country__: Country name of borrower.
+23. __location.town__ Town of the borrower.
+24. __location.geo.level__: Level of accuracy of supplied [geometry](http://www.georss.org/model).
+25. __location.geo.pairs__: The coordinate pairs for the geometry.
+25. __location.geo.type__: The type of geometry defined by the coordinate pairs provided.
+27. __currency_exchange_loss_amount__: Losses due to currency exchange.
+
+_NB_:
+_To cross-check most of these variable descriptions with API authors.__
+
+## Loading Data
+
+Here is a sample of 200k (out of +1M) records that has been pulled from [kiva api](http://api.kivaws.org/v1/loans/search.json?page=1).
+
+```{r echo=FALSE}
+files <- list.files(pattern = '*csv', path='./dataset/sample_200k/')
+loans <- lapply(files, function(x) read_csv(paste(getwd(), '/dataset/sample_200k/', x, sep=''))) %>% bind_rows()
+```
+
+## Inspecting the Dataframe
+
+```{r}
+head(loans)
+tail(loans)
+names(loans)
+dim(loans)
+View(loans)
+str(loans)
+summary(loans)
+```
+
+## Data munging
+
+```{r}
+# loan status as factor
+loan_status <- c('fundraising', 'funded', 'in_repayment', 'paid', 'defaulted', 'refunded')
+loan_status_labels <- c('Fundraising', 'Funded', 'In_repayment', 'Paid', 'Defaulted', 'Refunded')
+loans$status <- factor(loans$status, levels = loan_status, labels = loan_status_labels)
+
+# drop variables we do not need
+loans$image.id <- NULL
+loans$image.template_id <- NULL
+
+# get latitude and longitude from location_geo_pairs
+loans %>% separate(location.geo.pairs, into=c('location.geo.lat', 'location.geo.long'),sep=' ', remove = TRUE)
+```
+
+
