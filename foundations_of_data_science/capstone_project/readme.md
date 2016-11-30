@@ -52,4 +52,4 @@ The data set does not present enough information to enable:
 - Predict success rate in loan repayment.
 
 __Data variables__:
-...
+See this [doc](https://github.com/gabeno/data_n00b/blob/master/foundations_of_data_science/capstone_project/explore_sample_data.Rmd)
