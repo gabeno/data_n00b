@@ -4,6 +4,8 @@
 
 library(jsonlite)
 library(dplyr)
+library(foreach)
+library(doParallel)
 
 # the api returns data with a list and data frame
 # the data we need is in the data frame
@@ -11,61 +13,122 @@ library(dplyr)
 # strategy is to write to disk already chunked data (by page)
 # more efficient in terms of memory resource
 
-curr_dir <- getwd()
-setwd(curr_dir)
-
-combine <- function(u, v) { paste(u, v, sep=', ') }
+fn.combine <- function(u, v) { paste(u, v, sep=', ') }
 
 fetch.data <- function(page) {
     url = 'http://api.kivaws.org/v1/loans/search.json?page=_'
     endpoint = sub('_', page, url)
     print(paste('fetching data for =>', endpoint))
     loans <- fromJSON(endpoint, flatten = TRUE)
-    # unpack tags from list
-    loans$loans$tags <- unlist(
-        lapply(loans$loans$tags, function(data) {
-            ifelse(is.null(data[['name']]),
-                   NA,
-                   Reduce(combine, c(data[['name']]))) }))
-    # unpack themes from list
-    loans$loans$themes <- unlist(
-        lapply(loans$loans$themes, function(data) {
-            ifelse(is.null(data), NA, Reduce(combine, data)) }))
-    # unpack languages from list
-    loans$loans$description.languages <- unlist(
-        lapply(loans$loans$description.languages, function(data) {
-            ifelse(is.null(data), NA, Reduce(combine, data)) }))
     loans
 }
 
-save.data <- function(obj, page) {
-    path = sub('_', page, './dataset/loans._.csv')
-    write.csv(obj, path, row.names = FALSE, sep = '', fileEncoding = 'utf8')
-    print(paste('Data saved ... ', path))
+page.data <- function(page) {
+    page_df <- fetch.data(page)
+    page_df <- page_df$loans
+    # unpack tags from list
+    page_df$tags <- unlist(
+        lapply(page_df$tags, function(data) {
+            ifelse(is.null(data[['name']]),
+                   NA,
+                   Reduce(fn.combine, c(data[['name']]))) }))
+    # unpack themes from list
+    page_df$themes <- unlist(
+        lapply(page_df$themes, function(data) {
+            ifelse(is.null(data), NA, Reduce(fn.combine, data)) }))
+    # unpack languages from list
+    page_df$description.languages <- unlist(
+        lapply(page_df$description.languages, function(data) {
+            ifelse(is.null(data), NA, Reduce(fn.combine, data)) }))
+    page_df
 }
 
-pages <- function(page=1) {
-    metadata <- fetch.data(page)
-    metadata$paging$pages
+metadata <- function(d){
+    md <- data.frame(total_pages=d$paging$pages,
+                     total_records=d$paging$total,
+                     page_size=d$paging$page_size,
+                     num_cols=dim(d$loans)[2])
+    md
 }
 
-total_pages <- pages()
-get.data <- function(from=1, to=1) {
-    for (page in from:to) {
-        loans <- fetch.data(page)
-        save.data(loans$loans, page)
-    }
+# make_df <- function(data, l) {
+#     df <- data.frame(matrix(nrow=data$total_records,
+#                             ncol=data$num_cols),
+#                      stringsAsFactors = FALSE)
+#     names(df) <- names(l)
+#     df
+# }
+
+# get.data <- function(to=1, df) {
+#     for (page in 1:to) {
+#         df_page <- page.data(page)
+#         for (row in 1:20) {
+#             i <- ((page * 20) + row) - 20
+#             df[i, ] <- df_page[row, ]
+#         }
+#     }
+#     df
+# }
+
+page.1 <- fetch.data(1)
+metadata <- metadata(page.1)
+total_pages <- metadata$total_pages
+# df <- make_df(metadata, page.1$loans)
+# loans <- get.data(2, df)
+
+#
+# parallelize
+#
+# x <- lapply(1:2, fetch.data)
+no_cores <- detectCores() - 1
+cl<-makeCluster(no_cores)
+registerDoParallel(cl)
+# x <- parLapply(cl, 1:100, fetch.data)
+s <- Sys.time()
+L <- foreach(page=1:100, .combine=bind_rows, .packages=c('jsonlite')) %dopar% {
+    # Sys.sleep(.2)
+    page_df <- fetch.data(page)
+    page_df <- page_df$loans
+    # unpack tags from list
+    page_df$tags <- unlist(
+        lapply(page_df$tags, function(data) {
+            ifelse(is.null(data[['name']]),
+                   NA,
+                   Reduce(fn.combine, c(data[['name']]))) }))
+    # unpack themes from list
+    page_df$themes <- unlist(
+        lapply(page_df$themes, function(data) {
+            ifelse(is.null(data), NA, Reduce(fn.combine, data)) }))
+    # unpack languages from list
+    page_df$description.languages <- unlist(
+        lapply(page_df$description.languages, function(data) {
+            ifelse(is.null(data), NA, Reduce(fn.combine, data)) }))
+    page_df
 }
+t <- Sys.time()
+stopImplicitCluster()
 
-get.data(from=9100, to=total_pages)
+# curr_dir <- getwd()
+# dir.create(c('datas'))
+# path <- file.pat
+save(loans, file='loans_100.RData')
 
-
-
-
-
-
+# > load('./loans_100.RData')
+# > head(loans)
 
 # ------------------------------------ PLAY ------------------------------------
+
+# save.data <- function(obj, page) {
+#     path = sub('_', page, './dataset/loans._.csv')
+#     write.csv(obj, path, row.names = FALSE, sep = '', fileEncoding = 'utf8')
+#     print(paste('Data saved ... ', path))
+# }
+# 
+# curr_dir <- getwd()
+# setwd(curr_dir)
+# 
+# dir.create
+# file.path
 
 loans.40 <- fetch.data(40)
 tbl_df(loans.40$loans)
