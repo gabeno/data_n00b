@@ -1,0 +1,147 @@
+---
+title: "wine_prediction"
+author: "Gabriel Majivu"
+date: "12/3/2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Predicting Wine Quality
+
+Let us see if we can beat the best wine taster at his job!
+
+## Data
+
+```{r}
+wine <- read.csv('./data/wine.csv')
+str(wine)
+summary(wine)
+```
+
+## Building a Linear Model
+
+Using one variable
+
+```{r}
+model1 <- lm(Price ~ AGST, data=wine)
+summary(model1)
+```
+
+Errors or residuals:
+
+```{r}
+model1$residuals
+```
+
+Sum of Squared Errors:
+
+```{r}
+SSE <- sum(model1$residuals^2)
+SSE
+```
+
+Using two variables.
+
+```{r}
+model2 <- lm(Price ~ AGST + HarvestRain, data=wine)
+summary(model2)
+```
+
+R-squared increased from .xx to .7074. Likewise to Adjusted R-sqaured which increased from .xx to 0.6808.
+Sum of Squared Errors:
+
+```{r}
+SSE <- sum(model2$residuals^2)
+SSE
+```
+
+Using all variables:
+
+```{r}
+model3 <- lm(Price ~ AGST + HarvestRain + WinterRain + Age + FrancePop, data=wine)
+summary(model3)
+```
+
+R-sqaured value increased to .8294 and Adjusted R-squared to .7845. Adding
+these variables improved our model.
+Computing Sum of Squared Errors:
+
+```{r}
+SSE <- sum(model3$residuals^2)
+SSE
+```
+
+__Question: Which variables should we keep in the model?__
+
+Fill in some notes here ...
+
+Remove _FrancePop_ variable from the model.
+
+```{r}
+model4 <- lm(Price ~ AGST + HarvestRain + WinterRain + Age, data=wine)
+summary(model4)
+```
+
+R-sqaured decreases slightly, and adjusted R-squared increased. This is a
+stronger model than the previous.
+
+Age now has more significance. It is affected by multicollinearity (two 
+independent variables are highly correlated) - Age and FrancePop are highly 
+correlated.
+
+Computing some correlations
+
+```{r}
+cor(wine$Price, wine$WinterRain)
+cor(wine$Age, wine$FrancePop)
+```
+
+For all variables:
+
+```{r}
+cor(wine)
+```
+
+Because of multicollinearity, you should remove insignificant variables one at a time.
+What woul the model look like if we removed both insignificant variables?
+
+```{r}
+model5 <- lm(Price ~ AGST + HarvestRain + WinterRain, data=wine)
+summary(model5)
+```
+
+R-sqaured and Adjusted R-squared are lower. We would have missed a significant 
+variable Age! Age is more easy to interpret in the context of the problem - older wine is
+more expensive. So we choose to include it as opposed to have FrancePop variable.
+Multicollinearity problem between Age and FrancePop has been fixed. Since there
+is no other insignificant variable, we choose to stick with __model4__.
+
+## Making Predictions
+
+We use the test data.
+
+```{r}
+wineTest <- read.csv('./data/wine_test.csv')
+str(wineTest)
+```
+
+Use test data and preferred model to make predictions.
+
+```{r}
+predictTest <- predict(model4, newdata=wineTest)
+predictTest
+```
+
+Computing model accuracy.
+
+```{r}
+SSE <- sum((wineTest$Price - predictTest)^2)
+SST <- sum((wineTest$Price - mean(wine$Price))^2)
+1 - SSE / SST
+```
+
+Out of sample accuracy of the model is .7944278. However, the test set is really small.
+We should increase it to be more confident.s

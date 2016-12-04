@@ -1,0 +1,106 @@
+---
+title: "MoneyBall - NBA data"
+author: "Gabriel Majivu"
+date: "12/3/2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data
+
+```{r}
+NBA <- read.csv('./data/NBA_train.csv')
+str(NBA)
+```
+
+Explain the meaning of the variables ...
+
+## Playoffs & Wins
+
+```{r}
+table(NBA$W, NBA$Playoffs)
+```
+
+From about 42 wins teams always make it to the Playoffs (no zeroes)
+
+```{r}
+NBA$PTSdiff <- NBA$PTS - NBA$oppPTS
+plot(NBA$PTSdiff, NBA$W)
+```
+
+Creating a regression model
+
+```{r}
+WinsReg <- lm(W~PTSdiff, data=NBA)
+summary(WinsReg)
+```
+
+## Points Scored
+
+```{r}
+PTSReg <- lm(PTS ~ X2PA + X3PA + FTA + AST + ORB + DRB + TOV + STL + BLK, data=NBA)
+summary(PTSReg)
+SSE <- sum(PTSReg$residuals^2)
+SSE # not so interpretable
+RMSE <- sqrt(SSE/nrow(NBA))
+RMSE
+mean(NBA$PTS)
+```
+
+Removing the insignificant variables? TOV - has highest p value
+
+```{r}
+PTSReg2 <- lm(PTS ~ X2PA + X3PA + FTA + AST + ORB + DRB + STL + BLK, data=NBA)
+summary(PTSReg2)
+```
+
+Removing another variable - DRB
+
+```{r}
+PTSReg3 <- lm(PTS ~ X2PA + X3PA + FTA + AST + ORB + STL + BLK, data=NBA)
+summary(PTSReg3)
+```
+
+R-squared remains the same. We are justified in removing the variable.
+
+Removing BLK
+
+```{r}
+PTSReg4 <- lm(PTS ~ X2PA + X3PA + FTA + AST + ORB + STL, data=NBA)
+summary(PTSReg4)
+```
+
+R squared largely remains the same.
+
+```{r}
+SSE_4 <- sum(PTSReg4$residuals^2)
+SSE_4 # not so interpretable
+RMSE_4 <- sqrt(SSE_4/nrow(NBA))
+RMSE_4
+```
+
+RMSE has not changed much. Seems like we have a much better model after
+removing the extra variables.
+
+```{r}
+RegVar = NBA[c('X2PA', 'X3PA', 'FTA', 'AST', 'ORB', 'STL')]
+cor(RegVar)
+```
+
+## Making Predictions
+
+```{r}
+NBA_Test <- read.csv('./data/NBA_test.csv')
+PointsPrediction <- predict(PTSReg4, newdata=NBA_Test)
+SSE <- sum((PointsPrediction - NBA_Test$PTS)^2)
+SSE
+SST <- sum((mean(NBA$PTS) - NBA_Test$PTS)^2)
+SST
+R2 <- 1 - SSE/SST
+R2
+RMSE <- sqrt(SSE/nrow(NBA_Test))
+RMSE
+```
