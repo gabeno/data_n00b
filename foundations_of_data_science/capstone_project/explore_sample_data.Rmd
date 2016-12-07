@@ -64,8 +64,9 @@ _To cross-check most of these variable descriptions with API authors.__
 Here is a sample of 200k (out of +1M) records that has been pulled from [kiva api](http://api.kivaws.org/v1/loans/search.json?page=1).
 
 ```{r echo=FALSE}
-files <- list.files(pattern = '*csv', path='./dataset/sample_200k/')
-loans <- lapply(files, function(x) read_csv(paste(getwd(), '/dataset/sample_200k/', x, sep=''))) %>% bind_rows()
+# files <- list.files(pattern = '*csv', path='./dataset/sample_200k/')
+# loans <- lapply(files, function(x) read_csv(paste(getwd(), '/dataset/sample_200k/', x, sep=''))) %>% bind_rows()
+loans <- read_csv('./dataset/loans.csv')
 ```
 
 ## Inspecting the Dataframe
@@ -78,6 +79,9 @@ dim(loans)
 View(loans)
 str(loans)
 summary(loans)
+
+# check number of na per column
+sapply(loans, FUN = function(x) sum(is.na(x)))
 ```
 
 ## Data munging
@@ -89,6 +93,7 @@ loan_status_labels <- c('Fundraising', 'Funded', 'In_repayment', 'Paid', 'Defaul
 loans$status <- factor(loans$status, levels = loan_status, labels = loan_status_labels)
 
 # drop variables we do not need
+loans$id <- NULL
 loans$image.id <- NULL
 loans$image.template_id <- NULL
 
@@ -97,17 +102,66 @@ loans <- separate(loans, location.geo.pairs, into=c('location.geo.lat', 'locatio
 loans$location.geo.lat <- as.numeric(loans$location.geo.lat)
 loans$location.geo.long <- as.numeric(loans$location.geo.long)
 
-# remove loans without status
-loans_with_null_status <- loans[is.na(loans$status),]
-loans <- loans[na.omit(loans$status),]
+# assuming loans w/o partner_id are direct loans?
+direct_loans <- loans[is.na(loans$partner_id), ]
+direct_loans$location.country_code # kiva site says only in US, YES
+loans$partner <- as.numeric(is.na(loans$partner_id))
+
+# maybe borrower count has implication
+loans$group <- as.numeric(loans$borrower_count > 1)
+
+# there are a few large borrowers with funded amount of USD 50k
+# remove them for now
+large_borrowers <- loans[loans$funded_amount >= 50000, ]
+loans <- loans[!loans$funded_amount >= 50000, ]
 ```
 
 
 
 ## Plotting
 
-### 
+### What is the distribution of funded amounts?
 
 ```{r}
-
+ggplot(loans, aes(x=funded_amount)) + geom_histogram(binwidth = 100)
 ```
+Right skewed bar plot. Most loans that receive funding are small.
+
+
+
+### Any Relation between lender count and funded amount?
+
+Is there a group effect on the lenders with regard to the loan amounts?
+
+```{r}
+ggplot(loans, aes(x=lender_count, y=funded_amount)) + geom_jitter()
+```
+
+The higher the loan amount is the more number of people who fund it are. Lower loan amounts attract varied number of lenders though.
+
+### Lender vs Borrower
+
+Are lenders biased against many borrowers or individual lenders?
+
+```{r}
+ggplot(loans, aes(x=lender_count, y=borrower_count)) + geom_jitter()
+```
+
+Not sure there is a relationship here...
+
+### Borrower_count vs funded_amount
+
+Do groups (multiple borrowers) seek larger amounts?
+
+```{r}
+ggplot(loans, aes(x=funded_amount, y=borrower_count)) + geom_jitter()
+```
+
+
+### Loan status
+
+```{r}
+ggplot(loans, aes(x=status, y=funded_amount)) + geom_boxplot()
+```
+
+Possibly remove high loan amount?
