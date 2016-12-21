@@ -121,7 +121,7 @@ sapply(loans, FUN = function(x) sum(is.na(x)))
 
 ## Data munging
 
-Remove all columns that we may not need which include: _id_, _image.id_, _image.template_id_, _video.id_, _video.youtubeId_, _video.title_, _video.thumbnailImageId_
+Remove all columns that we may not need which include: _id_, _image.id_, _image.template_id_, _video.id_, _video.youtubeId_, _video.title_, _video.thumbnailImageId_, _description.languages_
 
 ```{r}
 # drop variables we do not need
@@ -132,6 +132,7 @@ loans$video.id <- NULL
 loans$video.youtubeId <- NULL
 loans$video.title <- NULL
 loans$video.thumbnailImageId <- NULL
+loans$description.languages <- NULL
 ```
 
 Set loans status as categories
@@ -140,6 +141,14 @@ Set loans status as categories
 loan_status <- c('fundraising', 'funded', 'in_repayment', 'paid', 'defaulted', 'refunded')
 loan_status_labels <- c('Fundraising', 'Funded', 'In_repayment', 'Paid', 'Defaulted', 'Refunded')
 loans$status <- factor(loans$status, levels = loan_status, labels = loan_status_labels)
+```
+
+Set sector as categories
+
+```{r}
+sector <- unique(loans$sector)
+sector_labels <- unique(loans$sector)
+loans$sector <- factor(loans$sector, levels = sector, labels = sector_labels)
 ```
 
 Set latitude and longitude from _location.geo.pairs_
@@ -164,51 +173,69 @@ Add a column to indicate whether loan is borrowed by individual or a group.
 loans$group <- as.numeric(loans$borrower_count > 1)
 ```
 
+## Exploratory Plots
 
-## Plotting
-
-### What is the distribution of funded amounts?
+Q: What is the distribution of funded amounts?
 
 ```{r}
-ggplot(loans, aes(x=funded_amount)) + geom_histogram(binwidth = 100)
+ggplot(loans, aes(x=funded_amount)) + geom_histogram(binwidth = 1000)
 ```
-Right skewed bar plot. Most loans that receive funding are small.
 
 
+```{r}
+ggplot(loans, aes(status, funded_amount)) + geom_boxplot()
+```
 
-### Any Relation between lender count and funded amount?
+```{r}
+ggplot(loans, aes(x=funded_amount, fill=sector, color=sector)) + geom_histogram(binwidth = 1000)
+```
 
-Is there a group effect on the lenders with regard to the loan amounts?
+__Notes__:
+* Right skewed bar plot. Most loans that receive funding are for small amounts. There appears to be a couple of large loan amounts though they must be quite few.
+* Do I remove high value loans to aid visualization?
+* If yes, what cutoff do I use?
+
+Q Is there any relation between _lender_count_ and _funded_amount_? (Is there a group effect on the lenders with regard to the loan amounts?)
 
 ```{r}
 ggplot(loans, aes(x=lender_count, y=funded_amount)) + geom_jitter()
 ```
 
-The higher the loan amount is the more number of people who fund it are. Lower loan amounts attract varied number of lenders though.
+__Notes__:
+There seems to be a relation between number of lenders (_lender_count_) and the loan amounts (_funded_amount_). Higher loan amounts attract more lenders perhaps due to the liability involved and the financial capabilities of the lenders.
 
-### Lender vs Borrower
-
-Are lenders biased against many borrowers or individual lenders?
+Q Are lenders biased against sinlge or goup borrowers?
 
 ```{r}
 ggplot(loans, aes(x=lender_count, y=borrower_count)) + geom_jitter()
 ```
 
-Not sure there is a relationship here...
+__Notes__:
+Not sure there is a relationship here.
 
-### Borrower_count vs funded_amount
-
-Do groups (multiple borrowers) seek larger amounts?
+Q Do groups (multiple borrowers) seek larger amounts as compared to individual borrowers?
 
 ```{r}
 ggplot(loans, aes(x=funded_amount, y=borrower_count)) + geom_jitter()
 ```
 
+__Notes__:
+Note sure if these are correlated.
 
-### Loan status
+Q What is the distribution of the borrowers?
 
 ```{r}
-ggplot(loans, aes(x=status, y=funded_amount)) + geom_boxplot()
+ggplot(loans, aes(status, borrower_count)) + geom_boxplot()
+```
+
+```{r}
+ggplot(loans, aes(sector, borrower_count)) + geom_boxplot() + theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0))
+```
+
+Q Does sector the borrower is in affect the loan amounts they attract?
+
+```{r}
+ggplot(loans, aes(x=funded_amount, y=sector)) + geom_jitter()
 ```
 
 Possibly remove high loan amount?
