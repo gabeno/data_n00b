@@ -16,9 +16,9 @@ library(doParallel)
 fn.combine <- function(u, v) { paste(u, v, sep=', ') }
 
 fetch.data <- function(page) {
-    url = 'http://api.kivaws.org/v1/loans/search.json?page=_'
-    endpoint = sub('_', page, url)
-    print(paste('fetching data for =>', endpoint))
+    url = 'http://api.kivaws.org/v1/loans/search.json?page='
+    endpoint = paste0(url, page)
+    print(paste0('fetching data for => ', endpoint))
     loans <- fromJSON(endpoint, flatten = TRUE)
     loans
 }
@@ -84,9 +84,9 @@ no_cores <- detectCores() - 1
 cl<-makeCluster(no_cores)
 registerDoParallel(cl)
 # x <- parLapply(cl, 1:100, fetch.data)
-s <- Sys.time()
-L <- foreach(page=1:100, .combine=bind_rows, .packages=c('jsonlite')) %dopar% {
-    # Sys.sleep(.2)
+t.start <- Sys.time()
+loans_2k <- foreach(page=1:3, .combine=bind_rows, .packages=c('jsonlite')) %dopar% {
+    if (page %% 4 == 0) Sys.sleep(1)
     page_df <- fetch.data(page)
     page_df <- page_df$loans
     # unpack tags from list
@@ -105,13 +105,14 @@ L <- foreach(page=1:100, .combine=bind_rows, .packages=c('jsonlite')) %dopar% {
             ifelse(is.null(data), NA, Reduce(fn.combine, data)) }))
     page_df
 }
-t <- Sys.time()
+t.end <- Sys.time()
 stopImplicitCluster()
+print(t.end - t.start)
 
 # curr_dir <- getwd()
 # dir.create(c('datas'))
 # path <- file.pat
-save(loans, file='loans_100.RData')
+save(loans_2k, file='loans_2k.RData')
 
 # > load('./loans_100.RData')
 # > head(loans)
