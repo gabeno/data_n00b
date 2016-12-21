@@ -32,90 +32,137 @@ The data set used in this project is from [kiva](https://www.kiva.org/). The dat
     * defaulted - A loan which has remained delinquent 6 months after the end of the loan payment schedule.
     * refunded - Refund the funded portion of the loan to lenders after the loan has been partially funded, fully funded, or even during repayment.
 4. __funded_amount__: This is the amount of the loan which has been purchased by Kiva lenders.
-5. __basket_amount__: This is the amount of the loan which lenders have saved in shopping baskets, but has not been confirmed as purchased.
+5. __basket_amount__: This is the amount of the loan which lenders have saved in their shopping baskets, but has not been confirmed as purchased.
 6. __activity__: Type of activity the borrower is involved with.
 7. __sector__: Type of sector the borrower is involved in.
-8. __themes__: General themes that further categorise borrower groups
+8. __themes__: General themes that further categorise borrowers.
 9. __use__: Description for the purpose of the loan.
-10. __partner_id__: Unique id for the field partners
-11. __posted_date__: Date the loan was posted on the Kiva website.
-12. __planned_expiration_date__: The date the loan bid expires on the Kiva website.
-13. __loan_amount__: Amount of funding sought in a bid for a loan.
-14. __borrower_count__: ...
+10. __partner_id__: Unique id for the field partners.
+11. __posted_date__: The date the loan was posted on the Kiva website.
+12. __planned_expiration_date__: The date the loan bid expires on the Kiva website. It is not set for some loans.
+13. __loan_amount__: Amount of funding sought by the borrowers in a bid for a loan.
+14. __borrower_count__: The number of borrowers for a loan. It is a good indication for single vs group borrowers.
 15. __lender_count__: Number of lenders who have purchased a loan.
 16. __bonus_credit_eligibility__: Whether a loan application is eligible for extra credit.
 17. __tags__: Borrower chosen tags to classify their loan applications.
 18. __description.languages__: Language choice(s) for the borrower.
-19. __image.id__: ...
-20. __image.template_id__: ...
+19. __image.id__: Image ID for a borrower.
+20. __image.template_id__: Image template id.
 21. __location.country_code__: Country code of borrower.
 22. __location.country__: Country name of borrower.
 23. __location.town__ Town of the borrower.
 24. __location.geo.level__: Level of accuracy of supplied [geometry](http://www.georss.org/model).
 25. __location.geo.pairs__: The coordinate pairs for the geometry.
 25. __location.geo.type__: The type of geometry defined by the coordinate pairs provided.
-27. __currency_exchange_loss_amount__: Losses due to currency exchange.
-
-_NB_:
-_To cross-check most of these variable descriptions with API authors.__
+27. __currency_exchange_loss_amount__: Losses realized by the lender due to fluctuations in the value of the local currency against the US dollar. This will result in the paid amount of loan being less than the full loan amount even when the status of the loan is listed as _paid_.
+28. __video.id__: Id for video.
+29. __video.youtubeId__: Id for video on youtube.
+30. __video.title__: Title of the video.
+31. __video.thumbnailImageId__: Thumbnail id for the video.
 
 ## Loading Data
 
-Here is a sample of 200k (out of +1M) records that has been pulled from [kiva api](http://api.kivaws.org/v1/loans/search.json?page=1).
+The data set sourced from [kiva api](http://build.kiva.org/docs/data) contains over 1.1 million loan records.
 
 ```{r echo=FALSE}
-# files <- list.files(pattern = '*csv', path='./dataset/sample_200k/')
-# loans <- lapply(files, function(x) read_csv(paste(getwd(), '/dataset/sample_200k/', x, sep=''))) %>% bind_rows()
-loans <- read_csv('./dataset/loans.csv')
+load('./loans.RData')
 ```
 
-## Inspecting the Dataframe
+## Inspecting the loans dataframe
+
+Check the top ten records.
 
 ```{r}
-head(loans)
-tail(loans)
-names(loans)
-dim(loans)
-View(loans)
-str(loans)
-summary(loans)
+head(loans, 10)
+```
 
+Check the last 10 records.
+
+```{r}
+tail(loans, 10)
+```
+
+View the whole dataset.
+
+```{r echo=FALSE}
+View(loans)
+```
+
+Column names (see Data Overview section for descriptions):
+
+```{r}
+names(loans)
+```
+
+The shape of the data frame.
+
+```{r}
+dim(loans)
+```
+
+The structure of the data frame.
+
+```{r}
+str(loans)
+```
+
+Summary of the dataset
+
+```{r}
+summary(loans)
+```
+
+Check the number of NA per column
+
+```{r}
 # check number of na per column
 sapply(loans, FUN = function(x) sum(is.na(x)))
 ```
 
 ## Data munging
 
-```{r}
-# loan status as factor
-loan_status <- c('fundraising', 'funded', 'in_repayment', 'paid', 'defaulted', 'refunded')
-loan_status_labels <- c('Fundraising', 'Funded', 'In_repayment', 'Paid', 'Defaulted', 'Refunded')
-loans$status <- factor(loans$status, levels = loan_status, labels = loan_status_labels)
+Remove all columns that we may not need which include: _id_, _image.id_, _image.template_id_, _video.id_, _video.youtubeId_, _video.title_, _video.thumbnailImageId_
 
+```{r}
 # drop variables we do not need
 loans$id <- NULL
 loans$image.id <- NULL
 loans$image.template_id <- NULL
-
-# get latitude and longitude from location_geo_pairs
-loans <- separate(loans, location.geo.pairs, into=c('location.geo.lat', 'location.geo.long'),sep=' ', remove = TRUE)
-loans$location.geo.lat <- as.numeric(loans$location.geo.lat)
-loans$location.geo.long <- as.numeric(loans$location.geo.long)
-
-# assuming loans w/o partner_id are direct loans?
-direct_loans <- loans[is.na(loans$partner_id), ]
-direct_loans$location.country_code # kiva site says only in US, YES
-loans$partner <- as.numeric(is.na(loans$partner_id))
-
-# maybe borrower count has implication
-loans$group <- as.numeric(loans$borrower_count > 1)
-
-# there are a few large borrowers with funded amount of USD 50k
-# remove them for now
-large_borrowers <- loans[loans$funded_amount >= 50000, ]
-loans <- loans[!loans$funded_amount >= 50000, ]
+loans$video.id <- NULL
+loans$video.youtubeId <- NULL
+loans$video.title <- NULL
+loans$video.thumbnailImageId <- NULL
 ```
 
+Set loans status as categories
+
+```{r}
+loan_status <- c('fundraising', 'funded', 'in_repayment', 'paid', 'defaulted', 'refunded')
+loan_status_labels <- c('Fundraising', 'Funded', 'In_repayment', 'Paid', 'Defaulted', 'Refunded')
+loans$status <- factor(loans$status, levels = loan_status, labels = loan_status_labels)
+```
+
+Set latitude and longitude from _location.geo.pairs_
+
+```{r}
+loans <- separate(loans, location.geo.pairs, into=c('location.geo.lat', 'location.geo.long'), sep=' ', remove = TRUE)
+loans$location.geo.lat <- as.numeric(loans$location.geo.lat)
+loans$location.geo.long <- as.numeric(loans$location.geo.long)
+```
+
+Add a column to identify direct vs non-direct loans. Direct loans do not require field partners hence partner_id is null.
+
+```{r}
+# direct_loans <- loans[is.na(loans$partner_id), ]
+# direct_loans$location.country_code
+loans$direct <- as.numeric(is.na(loans$partner_id))
+```
+
+Add a column to indicate whether loan is borrowed by individual or a group.
+
+```{r}
+loans$group <- as.numeric(loans$borrower_count > 1)
+```
 
 
 ## Plotting
