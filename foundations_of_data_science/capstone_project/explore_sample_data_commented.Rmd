@@ -1,0 +1,301 @@
+---
+title: "exploring_kiva_data"
+author: "Gabriel Majivu"
+date: "11/29/2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+
+```{r}
+library(dplyr)
+library(readr)
+library(tidyr)
+library(ggplot2)
+```
+
+## Data Overview
+
+The data set used in this project is from [kiva](https://www.kiva.org/). The data has these variables:
+
+1. __id__: unique id of the borrower
+2. __name__: name of the borrower
+3. __status__: current funding status that a loan has. Options include:
+    * fundraising - The loan has not yet been funded. You can find the amount funded so far by checking _funded_amount_.
+    * funded - This loan request has been completely funded and is not available for new loans by lenders.
+    * in_repayment - The loan has been disbursed to the borrowers and they are in the process of using the funds and making payments on the loan to the field partner.
+    * paid - The loan has been paid back in full by the borrower.
+    * defaulted - A loan which has remained delinquent 6 months after the end of the loan payment schedule.
+    * refunded - Refund the funded portion of the loan to lenders after the loan has been partially funded, fully funded, or even during repayment.
+4. __funded_amount__: This is the amount of the loan which has been purchased by Kiva lenders.
+5. __basket_amount__: This is the amount of the loan which lenders have saved in their shopping baskets, but has not been confirmed as purchased.
+6. __activity__: Type of activity the borrower is involved with.
+7. __sector__: Type of sector the borrower is involved in.
+8. __themes__: General themes that further categorise borrowers.
+9. __use__: Description for the purpose of the loan.
+10. __partner_id__: Unique id for the field partners.
+11. __posted_date__: The date the loan was posted on the Kiva website.
+12. __planned_expiration_date__: The date the loan bid expires on the Kiva website. It is not set for some loans.
+13. __loan_amount__: Amount of funding sought by the borrowers in a bid for a loan.
+14. __borrower_count__: The number of borrowers for a loan. It is a good indication for single vs group borrowers.
+15. __lender_count__: Number of lenders who have purchased a loan.
+16. __bonus_credit_eligibility__: Whether a loan application is eligible for extra credit.
+17. __tags__: Borrower chosen tags to classify their loan applications.
+18. __description.languages__: Language choice(s) for the borrower.
+19. __image.id__: Image ID for a borrower.
+20. __image.template_id__: Image template id.
+21. __location.country_code__: Country code of borrower.
+22. __location.country__: Country name of borrower.
+23. __location.town__ Town of the borrower.
+24. __location.geo.level__: Level of accuracy of supplied [geometry](http://www.georss.org/model).
+25. __location.geo.pairs__: The coordinate pairs for the geometry.
+25. __location.geo.type__: The type of geometry defined by the coordinate pairs provided.
+27. __currency_exchange_loss_amount__: Losses realized by the lender due to fluctuations in the value of the local currency against the US dollar. This will result in the paid amount of loan being less than the full loan amount even when the status of the loan is listed as _paid_.
+28. __video.id__: Id for video.
+29. __video.youtubeId__: Id for video on youtube.
+30. __video.title__: Title of the video.
+31. __video.thumbnailImageId__: Thumbnail id for the video.
+
+## Loading Data
+
+The data set sourced from [kiva api](http://build.kiva.org/docs/data) contains over 1.1 million loan records.
+
+```{r echo=FALSE}
+load('./loans.RData')
+```
+
+## Inspecting the loans dataframe
+
+Check the top ten records.
+
+```{r}
+head(loans, 10)
+```
+
+Check the last 10 records.
+
+```{r}
+tail(loans, 10)
+```
+
+View the whole dataset.
+
+```{r echo=FALSE}
+View(loans)
+```
+
+Column names (see Data Overview section for descriptions):
+
+```{r}
+names(loans)
+```
+
+The shape of the data frame.
+
+```{r}
+dim(loans)
+```
+
+The structure of the data frame.
+
+```{r}
+str(loans)
+```
+
+Summary of the dataset
+
+```{r}
+summary(loans)
+```
+
+Check the number of NA per column
+
+```{r}
+character_cols <- names(loans)[sapply(loans, is.character)]
+for(col in character_cols){
+  na_strings <- sum(loans[[col]]=="NA")
+  nas <- sum(is.na(loans[[col]]))
+  print(paste(col, ": ", na_strings,',NA:' ,nas))
+}
+```
+
+
+```{r}
+# check number of na per column
+sapply(loans, FUN = function(x) 100*sum(is.na(x))/dim(loans)[1])
+```
+
+## Data munging
+
+Remove all columns that we may not need which include: _id_, _image.id_, _image.template_id_, _video.id_, _video.youtubeId_, _video.title_, _video.thumbnailImageId_, _description.languages_
+
+```{r}
+# drop variables we do not need
+loans$id <- NULL
+loans$image.id <- NULL
+loans$image.template_id <- NULL
+loans$video.id <- NULL
+loans$video.youtubeId <- NULL
+loans$video.title <- NULL
+loans$video.thumbnailImageId <- NULL
+loans$description.languages <- NULL
+```
+
+Set loans status as categories
+
+```{r}
+unique(loans$status)
+```
+
+
+```{r}
+#Review this code because the only levels that you have for this variable are: "fundraising" "funded" "expired"
+#loan_status <- c('fundraising', 'funded', 'in_repayment', 'paid', 'defaulted', 'refunded')
+#loan_status_labels <- c('Fundraising', 'Funded', 'In_repayment', 'Paid', 'Defaulted', 'Refunded')
+#loans$status <- factor(loans$status, levels = loan_status, labels = loan_status_labels)
+loans$status <- factor(loans$status, levels = unique(loans$status), labels = c("Fundraising", "Funded", "Expired"))
+```
+
+```{r}
+table(loans$status)
+```
+
+
+Set sector as categories
+
+```{r}
+# Here you don't need to create two variables
+#sector <- unique(loans$sector)
+#sector_labels <- unique(loans$sector)
+#loans$sector <- factor(loans$sector, levels = sector, labels = sector_labels)
+loans$sector <- factor(loans$sector)
+```
+
+Set latitude and longitude from _location.geo.pairs_
+
+```{r}
+loans <- separate(loans, location.geo.pairs, into=c('location.geo.lat', 'location.geo.long'), sep=' ', remove = TRUE)
+loans$location.geo.lat <- as.numeric(loans$location.geo.lat)
+loans$location.geo.long <- as.numeric(loans$location.geo.long)
+```
+
+Add a column to identify direct vs non-direct loans. Direct loans do not require field partners hence partner_id is null.
+
+```{r}
+# direct_loans <- loans[is.na(loans$partner_id), ]
+# direct_loans$location.country_code
+loans$direct <- as.numeric(is.na(loans$partner_id))
+```
+
+Add a column to indicate whether loan is borrowed by individual or a group.
+
+```{r}
+#loans$group <- as.numeric(loans$borrower_count > 1)
+#This approach is better to create dummies, it will save memory:
+loans$group <- as.integer(loans$borrower_count > 1)
+
+```
+
+## Exploratory Plots
+
+Q: What is the distribution of funded amounts?
+
+```{r}
+ggplot(loans, aes(x=funded_amount)) + geom_histogram()
+```
+```{r}
+ggplot(loans, aes(x=funded_amount)) + geom_histogram(binwidth = 150, color='black', fill='white') + 
+  xlim(c(0,10000))
+```
+
+```{r}
+ggplot(loans, aes(status, funded_amount)) + geom_boxplot()
+```
+
+```{r}
+# To see the relationship between this variables try other approches like the following examples:
+ggplot(loans, aes(x = status, y = funded_amount)) + 
+  geom_bar(stat = "summary", fun.y = "mean")
+```
+```{r}
+ggplot(loans[loans$funded_amount<2000,], aes(x = status, y = funded_amount)) + 
+  geom_boxplot()
+```
+```{r}
+ggplot(loans, aes(x = status, y = log(funded_amount))) + 
+  geom_boxplot()
+```
+
+```{r}
+ggplot(loans, aes(x=funded_amount, fill=sector, color=sector)) + geom_histogram(binwidth = 1000)
+```
+
+__Notes__:
+* Right skewed bar plot. Most loans that receive funding are for small amounts. There appears to be a couple of large loan amounts though they must be quite few.
+* Do I remove high value loans to aid visualization?
+* If yes, what cutoff do I use?
+
+Q Is there any relation between _lender_count_ and _funded_amount_? (Is there a group effect on the lenders with regard to the loan amounts?)
+
+```{r}
+ggplot(loans, aes(x=lender_count, y=funded_amount)) + geom_jitter()
+```
+
+__Notes__:
+There seems to be a relation between number of lenders (_lender_count_) and the loan amounts (_funded_amount_). Higher loan amounts attract more lenders perhaps due to the liability involved and the financial capabilities of the lenders.
+
+Q Are lenders biased against sinlge or goup borrowers?
+
+```{r}
+ggplot(loans, aes(x=lender_count, y=borrower_count)) + geom_jitter()
+```
+
+__Notes__:
+Not sure there is a relationship here.
+
+Q Do groups (multiple borrowers) seek larger amounts as compared to individual borrowers?
+
+```{r}
+ggplot(loans, aes(x=funded_amount, y=borrower_count)) + geom_jitter()
+```
+
+__Notes__:
+Note sure if these are correlated.
+
+Q What is the distribution of the borrowers?
+
+```{r}
+ggplot(loans, aes(status, borrower_count)) + geom_boxplot()
+```
+
+```{r}
+ggplot(loans, aes(sector, borrower_count)) + geom_boxplot() + theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0))
+```
+
+Q Does sector the borrower is in affect the loan amounts they attract?
+
+```{r}
+ggplot(loans, aes(x=funded_amount, y=sector)) + geom_jitter()
+```
+
+Possibly remove high loan amount?
+
+## A few comments and advise:
+1. Before looking for relationships between variables, you most perform descriptive analysis and try to understand ALL the variables that you think that might be useful, for numerical varibles calculate the basic descriptive statistics and the histogram. For categorical variables the counts and proportions.
+
+2. Because founded_amount and loan_amount are highly skewed variables, during the exploratory data analysis when exploring the relationship with others I recommend to take the log of those variables.
+
+3. Create the variable founded_percent = 100*founded_amount/loan_amount and try to make sense of it and say something meaninful from it's distribution. Explore the relationship with other variables. This variable will be very likely our dependent (target) variable in the modelling part.
+
+4. For the borrower count create a categorical varible with 3 levels: 'individual', 'small group' (2-9 people), 'large group' (more than 10 people) and include it in the analysis.
+
+5. Focus on the relationships between the variable created in point 3 and the following (that will be likely be the explanatory variables in our models): activity, sector, length_of_fundrasing(has to be created = expiration_date - posted_date), borrower_count(as created in 4), # of description languages (has to be created), country/world region(has to be created), loan_amount, loan_mount/borrower_count.
+
+6. If the default visualization plots don't tell you anything useful, try changing the default options or the plots, until you see something useful.
+
+7. Always keep in mind the question that you want to solve and let that be the guide for everything you do in your anaysis.
+

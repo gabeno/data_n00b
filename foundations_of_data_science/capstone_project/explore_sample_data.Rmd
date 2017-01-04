@@ -115,8 +115,16 @@ summary(loans)
 Check the number of NA per column
 
 ```{r}
-# check number of na per column
-sapply(loans, FUN = function(x) sum(is.na(x)))
+character_cols <- names(loans)[sapply(loans, is.character)]
+for(col in character_cols){
+  na_strings <- sum(loans[[col]]=="NA")
+  nas <- sum(is.na(loans[[col]]))
+  print(paste(col, ": ", na_strings,',NA:' ,nas))
+}
+```
+
+```{r}
+sapply(loans, FUN = function(x) 100 * sum(is.na(x)) / dim(loans)[1])
 ```
 
 ## Data munging
@@ -138,17 +146,19 @@ loans$description.languages <- NULL
 Set loans status as categories
 
 ```{r}
-loan_status <- c('fundraising', 'funded', 'in_repayment', 'paid', 'defaulted', 'refunded')
-loan_status_labels <- c('Fundraising', 'Funded', 'In_repayment', 'Paid', 'Defaulted', 'Refunded')
-loans$status <- factor(loans$status, levels = loan_status, labels = loan_status_labels)
+loans$status <- factor(loans$status,
+                       levels = unique(loans$status),
+                       labels = c("Fundraising", "Funded", "Expired"))
+```
+
+```{r}
+table(loans$status)
 ```
 
 Set sector as categories
 
 ```{r}
-sector <- unique(loans$sector)
-sector_labels <- unique(loans$sector)
-loans$sector <- factor(loans$sector, levels = sector, labels = sector_labels)
+loans$sector <- factor(loans$sector)
 ```
 
 Set latitude and longitude from _location.geo.pairs_
@@ -170,20 +180,237 @@ loans$direct <- as.numeric(is.na(loans$partner_id))
 Add a column to indicate whether loan is borrowed by individual or a group.
 
 ```{r}
-loans$group <- as.numeric(loans$borrower_count > 1)
+#loans$group <- as.integer(loans$borrower_count > 1)
 ```
 
 ## Exploratory Plots
 
-Q: What is the distribution of funded amounts?
+### Variable: _funded_amount_
 
 ```{r}
-ggplot(loans, aes(x=funded_amount)) + geom_histogram(binwidth = 1000)
+summary(loans$funded_amount)
+```
+
+The lower median and higher mean suggest high value observations that skew the distribution to the right.
+
+```{r}
+ggplot(loans, aes(x=funded_amount)) + geom_histogram(binwidth = 200)
+```
+
+The plot shows a right skewed _funded_amount_ variable. Let us find a good cutoff for large loan amounts that will retain as much data and control the skew.
+
+```{r}
+# choosing a number of cutoff amounts
+cut_off_amounts <- c(5000, 6000, 7000, 8000, 9000, 10000, 12500)
+for(amount in cut_off_amounts){
+    count <- sum(loans$funded_amount > amount)
+    proportion <- 100 * count / dim(loans)[1]
+    print(paste("cut_off_amount =", amount, ", count =", count,', proportion =' ,proportion, '%'))
+}
+```
+
+__Notes__:
+
+_funded_amount_ of USD 9,000 is a good pick for cut_off for large loan amounts. It only affects 1376 observations which is about 0.14% of all the records. Further, it is practically a large sum and may be safely ignored for purposes of studying microfinancing.
+
+```{r}
+loans_sub <- subset(loans, loans$funded_amount <= 9000)
+```
+
+Plotting with the new dataset
+
+```{r}
+ggplot(loans_sub, aes(x=funded_amount)) + geom_histogram(binwidth = 100)
+```
+
+### Variable: _loan_amount_
+
+```{r}
+summary(loans_sub$loan_amount)
+```
+
+Despite having capped the _funded_amount_ at USD 9,000 the _loan_amount_ shows that there were requests for higher amounts whi may have been under_funded. Perhaps a variable with rate of funding is important.
+
+```{r}
+ggplot(loans_sub, aes(x=loan_amount)) + geom_histogram(binwidth = 100)
+```
+
+### variable: _borrower_count_
+
+```{r}
+summary(loans$borrower_count)
+```
+
+```{r}
+ggplot(loans, aes(x=borrower_count)) + geom_histogram(binwidth = 3)
+```
+
+Right skewed. Let us try to make groups for this variable. Proposed groups are:
+* individual  = 1 persons
+* small group = 2 - 9 persons
+* large group = more than 10 people
+
+```{r}
+loans$group <- cut(loans$borrower_count, c(0,1,9,79), labels=c('Individual','Small','Large'), ordered_result = TRUE)
+```
+
+```{r}
+ggplot(loans, aes(x=borrower_count, fill=group)) + geom_histogram(binwidth = 3)
+```
+
+```{r}
+ggplot(loans, aes(group, borrower_count)) + geom_boxplot()
+```
+
+Perhaps introduce another sub-group to reduce the outliers in the "Large" sub-group.
+
+### Variable: _lender_count_
+
+```{r}
+summary(loans$lender_count)
+```
+
+This variable also needs groups. Should the groupings be consistent with the one created from _borrower_count_?
+
+### Variable: _status_
+
+```{r}
+levels(loans$status)
+```
+
+```{r}
+table(loans$status)
+```
+
+```{r}
+ggplot(loans, aes(status, ..count..)) + geom_bar()
+```
+
+status: __funding__ has the highest count in the dataset
+
+### Variable: _sector_
+
+```{r}
+levels(loans$sector)
+```
+
+```{r}
+table(loans$sector)
+```
+
+```{r}
+ggplot(loans, aes(sector, ..count..)) + geom_bar() + theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0))
+```
+
+Most popular sectors include "agriculture", "food", "retail".
+
+__Note__: explore elationship with funded loan amounts.
+
+### Variable: _bonus_credit_eligibility_
+
+```{r}
+levels(loans$bonus_credit_eligibility)
+```
+
+```{r}
+table(loans$bonus_credit_eligibility)
+```
+
+```{r}
+ggplot(loans, aes(bonus_credit_eligibility, ..count..)) + geom_bar()
+```
+
+### Variable: _group_
+
+```{r}
+table(loans$group)
+```
+
+```{r}
+ggplot(loans, aes(group, ..count..)) + geom_bar()
+```
+
+There are many individual borrowers.
+
+
+### new variables
+
+### _funding_rate_
+
+This variable defines the rate of success in funding bid by the borrower, in other words how much of the original sought amount was actually funded?
+
+```{r}
+loans$funding_rate <- 100*loans$funded_amount / loans$loan_amount
+summary(loans$funding_rate)
 ```
 
 
 ```{r}
-ggplot(loans, aes(status, funded_amount)) + geom_boxplot()
+ggplot(loans, aes(x=funding_rate, fill=status)) + geom_histogram(binwidth = 5) + facet_grid(~status)
+```
+
+As expected, loans with status "funding" have highest _funding_rate_ in comarison with the others which have 0%.
+
+```{r}
+sum(loans[["funding_rate"]] == 0)
+```
+
+```{r}
+100*sum(loans[["funding_rate"]] == 0)/dim(loans)[1]
+```
+
+Only 0.26% of all loans in the data set have 0% funding rate - from the plot above they are either in the fundraising stage or expired. This dataset has the bulk of the loans fulfilled by lenders.
+
+
+### _funding_duration_
+
+This variable defines the period (in days) it takes for a loan to be bought by the lenders.
+
+```{r}
+loans$funding_duration <- as.Date(loans$planned_expiration_date) - as.Date(loans$posted_date)
+loans$funding_duration <- as.integer(loans$funding_duration)
+```
+
+```{r}
+summary(loans$funding_duration)
+```
+
+The NAs are due to some loan applications missing a _planned_expiration_date_. We could set these to have the median value.
+
+```{r}
+mean_duration <- mean(loans$funding_duration, na.rm = TRUE)
+loans$funding_duration[is.na(loans$funding_duration)] <- mean_duration
+summary(loans$funding_duration)
+```
+
+There is an outlier that is skewing this dataseat to the extreme right - it has a very high value for the duration. Ideally such a high duration is not practical since a loan can not stay for that long at a "fundraising stage".
+
+```{r}
+sum(loans[["funding_duration"]] > 90)
+```
+
+
+```{r}
+ggplot(subset(loans, loans$funding_duration <= 90), aes(x=funding_duration)) + geom_histogram(binwidth = 5)
+```
+
+
+---
+
+Q: What is the distribution of funded amounts?
+
+```{r}
+ggplot(subset(loans, loans$funded_amount < 10000), aes(x=funded_amount)) + geom_histogram(binwidth = 200)
+```
+
+```{r}
+# subset
+sum(loans$funded_amount > 10000)
+```
+
+
+```{r}
+ggplot(subset(loans, loans$funded_amount < 10000), aes(status, funded_amount)) + geom_boxplot()
 ```
 
 ```{r}
@@ -208,12 +435,16 @@ Q Are lenders biased against sinlge or goup borrowers?
 
 ```{r}
 ggplot(loans, aes(x=lender_count, y=borrower_count)) + geom_jitter()
+
+# add a plot between lender count vs single and group
 ```
 
 __Notes__:
 Not sure there is a relationship here.
 
 Q Do groups (multiple borrowers) seek larger amounts as compared to individual borrowers?
+
+new variable -> $/person
 
 ```{r}
 ggplot(loans, aes(x=funded_amount, y=borrower_count)) + geom_jitter()
@@ -231,6 +462,8 @@ ggplot(loans, aes(status, borrower_count)) + geom_boxplot()
 ```{r}
 ggplot(loans, aes(sector, borrower_count)) + geom_boxplot() + theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0))
 ```
+visualize on borrower_count and get some direction on it.
+
 
 Q Does sector the borrower is in affect the loan amounts they attract?
 
@@ -239,3 +472,5 @@ ggplot(loans, aes(x=funded_amount, y=sector)) + geom_jitter()
 ```
 
 Possibly remove high loan amount?
+mean funded_amount
+
