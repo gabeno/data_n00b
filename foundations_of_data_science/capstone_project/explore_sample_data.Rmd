@@ -19,7 +19,7 @@ library(ggplot2)
 library(stringr)
 ```
 
-## Data Overview
+### Data Overview
 
 The data set used in this project is from [kiva](https://www.kiva.org/). The data has these variables:
 
@@ -61,7 +61,7 @@ The data set used in this project is from [kiva](https://www.kiva.org/). The dat
 30. __video.title__: Title of the video.
 31. __video.thumbnailImageId__: Thumbnail id for the video.
 
-## Loading Data
+### Loading Data
 
 The data set sourced from [kiva api](http://build.kiva.org/docs/data) contains over 1.1 million loan records.
 
@@ -69,7 +69,7 @@ The data set sourced from [kiva api](http://build.kiva.org/docs/data) contains o
 load('./loans.RData')
 ```
 
-## Inspecting the loans dataframe
+### Inspecting the loans dataframe
 
 Check the top ten records.
 
@@ -128,12 +128,11 @@ for(col in character_cols){
 sapply(loans, FUN = function(x) 100 * sum(is.na(x)) / dim(loans)[1])
 ```
 
-## Data munging
+### Data munging
 
 Remove all columns that we may not need which include: _id_, _image.id_, _image.template_id_, _video.id_, _video.youtubeId_, _video.title_, _video.thumbnailImageId_, _description.languages_
 
 ```{r}
-# drop variables we do not need
 loans$id <- NULL
 loans$image.id <- NULL
 loans$image.template_id <- NULL
@@ -141,7 +140,6 @@ loans$video.id <- NULL
 loans$video.youtubeId <- NULL
 loans$video.title <- NULL
 loans$video.thumbnailImageId <- NULL
-#loans$description.languages <- NULL
 ```
 
 Set loans status as categories
@@ -184,9 +182,9 @@ Add a column to indicate whether loan is borrowed by individual or a group.
 #loans$group <- as.integer(loans$borrower_count > 1)
 ```
 
-## Exploratory Plots
+### Exploratory Plots
 
-### Variable: _status_
+#### Variable: _status_
 
 ```{r}
 levels(loans$status)
@@ -194,36 +192,36 @@ levels(loans$status)
 
 ```{r}
 df <- data.frame(table(loans$status))
-colnames(df) <- c('Status', 'Frequency', 'Percentage')
 df$Percentage <- df$Freq / sum(df$Freq) * 100
+colnames(df) <- c('Status', 'Frequency', 'Percentage')
 df
 ```
 
 The "Expired" status has not been explained on the kiva website. Since it is ambiguous, we shall remove the affected rows from the dataset. Also, there are some loans which have status "Fundraising" which means they [not yet been funded](http://build.kiva.org/docs/data/loans). We will also remove these from the dataset.
 
 ```{r}
-loans <- subset(loans, status == 'Funded')
+#loans <- subset(loans, status == 'Funded')
 ```
 
 A plot with the remaining rows:
 
 ```{r}
-#ggplot(loans, aes(status, ..count..)) + geom_bar()
+ggplot(loans, aes(status, ..count..)) + geom_bar()
 ```
 
-### Variable: _loan_amount_
+#### Variable: _loan_amount_
 
 ```{r}
 summary(loans$loan_amount)
 ```
 
-The median is lower than the mean by hundreds of dollars.
+The average amount of loan borrowed is $837.20 We also observe that the median is lower than the mean by a few hundreds of dollars. This points to existence of high loan amounts. The lowest amount requested is $25, the highest being $10,000.
 
 ```{r}
 ggplot(loans, aes(x=loan_amount)) + geom_histogram(binwidth = 200)
 ```
 
-The plot shows that most of the _loan_amount_ is low. There are high amounts too. To get a better plot, we need to compute a sensible cutoff to remove the high loan amounts.
+As anticipated, there are a number high loan amounts that cause skew on the plot. Since the focus on this study is to evaluate microloans, we need to compute a sensible cutoff to remove the high loan amounts.
 
 ```{r}
 # choosing a number of cutoff amounts
@@ -237,25 +235,28 @@ for(amount in cut_off_amounts){
 
 __Notes__:
 
-_loan_amount_ of USD 9,000 is a good pick for large loan amounts cutoff. It only affects 1,598 observations which is about 0.14% of all the records. Further, it is practically a large sum and any amount above it may be safely ignored for purposes of studying financing for the financially underprivileged population.
+For a cutoff at an amount of $9,000 only 1,598 observations will be removed. This represents about 0.14% of data. Further, $9,000 is practically a large sum and any amount above it may be safely ignored for purposes of studying microloans.
 
 ```{r}
-loans <- subset(loans, loans$funded_amount <= 9000)
+loans <- subset(loans, loans$loan_amount <= 9000)
+summary(loans$loan_amount)
 ```
+
+With the new dataset, 75% of the loan amounts borrowed are less or equal to $1000 and half the loans are not more than $525. The average amount of loan borrowed is $822.60.
 
 ```{r}
 ggplot(loans, aes(x=loan_amount)) + geom_histogram(binwidth = 200)
 ```
 
-Tis is a much clearer plot that shows right skew, with high proportion of lower loan amounts. Most borrowers need small amount capital for their projects.
+Here, it is much clearer that most borrowers go for less than $2,500.
 
-### Variable: _funded_amount_
+#### Variable: _funded_amount_
 
 ```{r}
 summary(loans$funded_amount)
 ```
 
-The lower median and higher mean suggest high value observations that skew the distribution to the right.
+The average funded amount for a loan is $794.10. We have a naive funding success rate of 96.5% by comparing with the average loan amount. Some loans have $0 funding.
 
 ```{r}
 ggplot(loans, aes(x=funded_amount)) + geom_histogram(binwidth = 200)
@@ -263,22 +264,23 @@ ggplot(loans, aes(x=funded_amount)) + geom_histogram(binwidth = 200)
 
 The plot shows a similar distribution to that of _loan_amount_. The _funded_amount_ is a proportion of the _loan_amount_ bid by the lenders. Perhaps there could be cases where a loan is oversubscribed. We shall see if this is the case in later analysis.
 
-### variable: _borrower_count_
+#### variable: _borrower_count_
 
 ```{r}
 summary(loans$borrower_count)
 ```
 
+
 ```{r}
 ggplot(loans, aes(x=borrower_count)) + geom_histogram(binwidth = 3)
 ```
 
-Most loans have individual borrowers or small groups - few people borrowing together. The _borrower_count_ might be more valuable if it is transformed to categories with specific number of people. Making groups for this variable thus:
+Most loans have individual borrowers or small groups i.e. few people borrowing together. The _borrower_count_ might be more valuable if it is transformed to categories with specific number of people. Making groups for this variable thus:
 * individual  = 1 persons
 * small group = 2 - 9 persons
 * large group = more than 10 persons
 
-We create a new variable _borrower_group_
+We therefore create a new variable _borrower_group_
 
 ```{r}
 loans$borrower_group <- cut(loans$borrower_count, c(0,1,9,79), labels=c('Individual','Small','Large'), ordered_result = TRUE)
@@ -299,13 +301,15 @@ How does a box plot of the same variable look like?
 The different groups show different variability, the least being the "Individual" and "Large" group showing most variability.
 It has some outliers but since the count is small (seen from the preceding plot) it is not necessary to break it down further.
 
-### Variable: _lender_count_
+#### Variable: _lender_count_
 
 This variable also needs groups. We could apply the same treatment as the borrower count for this group.
 
 ```{r}
 summary(loans$lender_count)
 ```
+
+Lender group average 23 persons per loan. Lenders tend to spread their risk by grouping and buying into loans in small amounts
 
 ```{r}
 ggplot(loans, aes(x=lender_count)) + geom_histogram(binwidth = 5)
@@ -335,13 +339,7 @@ ggplot(loans, aes(x=lender_group)) + geom_bar()
 
 THe plot suggests most loans have 10-50 lenders, they attract significant number of lenders. Number of loans with greater than 100 lenders are much fewer than the other two categories combined. Practically high loan amounts are much less and it these that would require many more lenders to combine effort, perhaps minimize their risk.
 
-How does a box plot of the same variable look like?
-
-```{r}
-#ggplot(loans, aes(lender_group, borrower_count)) + geom_boxplot()
-```
-
-### Variable: _sector_
+#### Variable: _sector_
 
 ```{r}
 levels(loans$sector)
@@ -352,21 +350,21 @@ table(loans$sector)
 ```
 
 ```{r}
-df <- data.frame(table(loans$sector))
-df$Percentage <- df$Freq / sum(df$Freq) * 100
-colnames(df) <- c('Sector', 'Frequency', 'Percentage')
-df
+sector_dist <- data.frame(sort(table(loans$sector), decreasing = TRUE))
+sector_dist$Percentage <- sector_dist$Freq / sum(sector_dist$Freq) * 100
+colnames(sector_dist) <- c('Sector', 'Frequency', 'Percentage')
+sector_dist
 ```
-
-From the proportions, Agriculture, Food and Retail sectors are the busiest.
 
 ```{r}
-ggplot(loans, aes(sector, ..count..)) + geom_bar() + theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0))
+ggplot(sector_dist, aes(Sector, Frequency)) + 
+    geom_bar(stat="identity") + 
+    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0))
 ```
 
-Most popular sectors include "agriculture", "food", "retail".
+Most popular sectors include "agriculture", "food", "retail". Providing food for the family is an important thing for most breadwinners and this conforms to what the data shows. Retail also is popular because of small businesses that people have.
 
-### Variable: _bonus_credit_eligibility_
+#### Variable: _bonus_credit_eligibility_
 
 ```{r}
 levels(loans$bonus_credit_eligibility)
@@ -380,7 +378,7 @@ table(loans$bonus_credit_eligibility)
 ggplot(loans, aes(bonus_credit_eligibility, ..count..)) + geom_bar()
 ```
 
-### Variable: _funding_rate_
+#### Variable: _funding_rate_
 
 This variable defines the rate of success in funding bid by the borrower, in other words how much of the original sought amount was actually funded?
 
@@ -389,24 +387,23 @@ loans$funding_rate <- 100*loans$funded_amount / loans$loan_amount
 summary(loans$funding_rate)
 ```
 
+The average rate of funding is 97.69% with the highest being 113.30%. Funding rate is considered as the proportion of loan which a lender bought. Any value more than 100% was overfunded.
+
 ```{r}
 ggplot(loans, aes(x=funding_rate)) + geom_histogram(binwidth=2)
 ```
 
-As expected, loans with status "funding" have highest _funding_rate_ in comarison with the others which have 0%.
-
 ```{r}
-sum(loans[["funding_rate"]] < 100)
+sum(loans[["funding_rate"]] <= 100)
 ```
 
-There is only one loan that is underfunded.
+About 1.1M loans are underfunded and ...
 
 ```{r}
-100*sum(loans[["funding_rate"]] == 100)/dim(loans)[1]
+sum(loans[["funding_rate"]] > 100)
 ```
 
-99.99% of the loans are 100% funded.
-*response variable??*
+only two are overfunded.
 
 ### Variable: _funding_duration_
 
@@ -429,7 +426,7 @@ loans$funding_duration[is.na(loans$funding_duration)] <- mean_duration
 summary(loans$funding_duration)
 ```
 
-There is an outlier that is skewing this dataseat to the extreme right - it has a very high value for the duration. Ideally such a high duration is not practical since a loan can not stay for that long at a "fundraising stage".
+There is a loan which has a very long duration. Ideally such a high duration is not practical since a loan can not stay for that long at a "fundraising stage". If we consider a maximum period of 90 days as the funding period, then 339 observations are affected. 90 days is reasonable because it is a common credit period in the finance world.
 
 ```{r}
 sum(loans[["funding_duration"]] > 90)
@@ -457,9 +454,9 @@ loans$funding_duration <- cut(loans$funding_duration, c(0, 30, 1674),
 ggplot(loans, aes(funding_duration, ..count..)) + geom_bar()
 ```
 
-More loans are funded within 30 days.
+More loans are funded within 30 days. Perhaps this goes with the thought that most loan amounts are small thereby they do not need a lot of "funding time".
 
-### Variable: country
+#### Variable: country
 
 Let us try to understand where the applicants originate from.
 
@@ -469,21 +466,48 @@ table(loans$country)
 ```
 
 ```{r}
-df <- data.frame(table(loans$country))
-df$Percentage <- df$Freq / sum(df$Freq) * 100
-colnames(df) <- c('Country', 'Frequency', 'Percentage')
-df
+country_dist <- data.frame(sort(table(loans$country), decreasing = TRUE))
+country_dist$Percentage <- country_dist$Freq / sum(country_dist$Freq) * 100
+colnames(country_dist) <- c('Country', 'Frequency', 'Percentage')
+country_dist
 ```
 
 Let us plot it for easier visual analysis:
 
 ```{r, fig.width = 8, fig.height = 6}
-ggplot(loans, aes(country, ..count..)) + 
-    geom_bar() + 
+ggplot(country_dist, aes(Country, Frequency)) + 
+    geom_bar(stat="identity") + 
     theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=12))
 ```
 
 Kenya and Phillipines have the high counts for borrowers. Perhaps it would be intersting to complement this dataset with one with economic ranking for countries to understand if there is a relationship.
+
+The top ten countries by loan count:
+ - Phillipines (19.4%)
+ - Kenya (10.0%)
+ - Peru (6.78%)
+ - Cambodia (5.34%)
+ - El Salvador (4.53%)
+ - Uganda (3.34%)
+ - Nicaragua (3.28%)
+ - Tajikistan (2.98%)
+ - Pakistan (2.86%)
+ - Equador (2.38%)
+ 
+```{r}
+country_top_ten <- country_dist[1:10,]
+ggplot(country_top_ten, aes(Country, Frequency), fill=loans$sector) + 
+    geom_bar(stat="identity") + 
+    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=12))
+```
+ 
+
+```{r, fig.width = 8, fig.height = 6}
+loans_top_ten <- subset(loans, loans$country %in% country_top_ten[['Country']])
+ggplot(loans_top_ten, aes(country, ..count.., fill=sector)) + 
+    geom_bar(position='dodge') + 
+    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=12))
+```
 
 ### Variable: description languages
 
@@ -576,13 +600,9 @@ ggplot(loans, aes(sector, ..count.., color=borrower_group, fill=borrower_group))
 Indivudual borrowers are dominant across all sectors.
 
 ```{r, fig.width = 8, fig.height = 6}
-ggplot(loans, aes(x=country, y=funded_amount)) + 
-    geom_boxplot() + 
+ggplot(loans, aes(x=country, y=mean(funded_amount))) + 
+    geom_col() + 
     theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=12))
 ```
 
 Countries with high number of borrowing - Cambodia, Kenya and Phillipines - have low variablity in the amounts loaned. Most people borrow small amounts of money. They are developing economies and imply low cadre pf borrowers trying to raise funds for their projects. 75% of the loans borrowed in these countries is less than $1,250. United States has a high variability and the median loan amount is $5,000. In other countries though, the borrowing is quite varied, e.g Congo and Myanmar.
-
-```{r}
-cor(loans)
-```
