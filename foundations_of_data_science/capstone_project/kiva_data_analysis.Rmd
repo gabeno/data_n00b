@@ -17,11 +17,14 @@ library(readr)
 library(tidyr)
 library(ggplot2)
 library(stringr)
+library(scales)
 ```
+
 
 ### About
 
 [Kiva](https://www.kiva.org/about) is an international non-profit that allows people to lend money to low-income entrepreneurs and students in over 80 countries. Its mission is to enable people to create opportunity for themselves and for others.
+
 
 ### Loans Data Overview
 
@@ -65,6 +68,7 @@ The [data](http://build.kiva.org/docs/data/loans) set used in this project has t
 30. __video.title__: Title of the video.
 31. __video.thumbnailImageId__: Thumbnail id for the video.
 
+
 ### Loading Data
 
 The data was sourced from [kiva api](http://build.kiva.org/docs/data) via [this script](https://github.com/gabeno/data_n00b/blob/master/foundations_of_data_science/capstone_project/data.source.final.R) and saved as an _RData_ file. The data set contains over 1.1 million loan observations.
@@ -72,6 +76,36 @@ The data was sourced from [kiva api](http://build.kiva.org/docs/data) via [this 
 ```{r echo=FALSE}
 load('./loans.RData')
 ```
+
+
+### Kiva by numbers
+
+A brief look into the data set highlighting important numbers:
+
+```{r}
+length(unique(loans$location.country_code))
+```
+
+The Kiva dataset has 91 countries represented.
+
+```{r}
+length(unique(loans$id))
+```
+
+Over 1.1M borrowers have sought funding through Kiva.
+
+```{r}
+sum(loans[['funded_amount']])
+```
+
+Total amount of funding is $949M.
+
+```{r}
+sum(loans[['funded_amount']]) / sum(loans[['loan_amount']]) * 100
+```
+
+Repayment rate is 96.4%.
+
 
 ### Inspecting the loans dataframe
 
@@ -115,6 +149,7 @@ Summary of the dataset
 ```{r}
 summary(loans)
 ```
+
 
 ### Data munging
 
@@ -180,29 +215,46 @@ loans$direct <- as.numeric(is.na(loans$partner_id))
 
 ### Exploratory Plots
 
-#### Variable: _status_
+This section aims to gain insights for some variables of interest.
+
+#### _status_
+
+_status_ informs on the stage a loan has. There are a number of stages as outlined in the Kiva website. Loans for this dataset have the following status:
 
 ```{r}
 levels(loans$status)
 ```
 
+Here is the distribution by status of the loan.
+
 ```{r}
-df <- data.frame(table(loans$status))
-df$Percentage <- df$Freq / sum(df$Freq) * 100
-colnames(df) <- c('Status', 'Frequency', 'Percentage')
-df
+status_dist <- data.frame(table(loans$status))
+status_dist$Percentage <- status_dist$Freq / sum(status_dist$Freq) * 100
+colnames(status_dist) <- c('Status', 'Frequency', 'Percentage')
+status_dist
 ```
 
-The "Expired" status has not been explained on the kiva website. Since it is ambiguous, we shall remove the affected rows from the dataset. Also, there are some loans which have status "Fundraising" which means they [not yet been funded](http://build.kiva.org/docs/data/loans). We will also remove these from the dataset.
+95.54% of the loans have been funded and only 0.62% are in the fundraising stage. Unfortunately, the "Expired" status has not been explained on the kiva website. Since it is ambiguous, we shall remove the affected rows from the dataset.
 
 ```{r}
-#loans <- subset(loans, status == 'Funded')
+loans <- subset(loans, status=='Fundraising' | status=='Funded')
 ```
 
-A plot with the remaining rows:
+A plot for the status variable:
 
 ```{r}
-ggplot(loans, aes(status, ..count..)) + geom_bar()
+ggplot(loans, aes(status, ..count..)) +
+    geom_bar(width=.2) +
+    scale_y_continuous(labels = comma) +
+    labs(x = "Loan Status", y = "Count", title = "Loan Status by count") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
 
 #### Variable: _loan_amount_
