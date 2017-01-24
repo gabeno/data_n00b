@@ -2,7 +2,9 @@
 title: "Exploring Kiva Loans Data"
 author: "Gabriel Majivu"
 date: "11/29/2016"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -514,20 +516,6 @@ ggplot(sector_dist, aes(Sector, Frequency)) +
 ```
 
 Evidently, the most popular sectors include "agriculture", "food", "retail". It seems accessing food is the most important activity on the basis of "agriculture"" and "food" sectors topping. Another observation is that small scale business ventures like "retail"" and "services" rank higher than the more capital intensive ventures like "construction", "manufacturing" and "wholesale". "entertainment" is the least popular sector - no one wants to fund leisure activities.
-
-#### Variable: _bonus_credit_eligibility_
-
-```{r}
-levels(loans$bonus_credit_eligibility)
-```
-
-```{r}
-table(loans$bonus_credit_eligibility)
-```
-
-```{r}
-ggplot(loans, aes(bonus_credit_eligibility, ..count..)) + geom_bar()
-```
 
 #### Variable: _funding_rate_
 
