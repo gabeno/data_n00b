@@ -1,5 +1,5 @@
 ---
-title: "exploring_kiva_data"
+title: "Exploring Kiva Loans Data"
 author: "Gabriel Majivu"
 date: "11/29/2016"
 output: html_document
@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Libraries
+### Libraries
 
 ```{r}
 library(dplyr)
@@ -19,9 +19,13 @@ library(ggplot2)
 library(stringr)
 ```
 
-### Data Overview
+### About
 
-The data set used in this project is from [kiva](https://www.kiva.org/). The data has these variables:
+[Kiva](https://www.kiva.org/about) is an international non-profit that allows people to lend money to low-income entrepreneurs and students in over 80 countries. Its mission is to enable people to create opportunity for themselves and for others.
+
+### Loans Data Overview
+
+The [data](http://build.kiva.org/docs/data/loans) set used in this project has these variables:
 
 1. __id__: unique id of the borrower
 2. __name__: name of the borrower
@@ -63,7 +67,7 @@ The data set used in this project is from [kiva](https://www.kiva.org/). The dat
 
 ### Loading Data
 
-The data set sourced from [kiva api](http://build.kiva.org/docs/data) contains over 1.1 million loan records.
+The data was sourced from [kiva api](http://build.kiva.org/docs/data) via [this script[(https://github.com/gabeno/data_n00b/blob/master/foundations_of_data_science/capstone_project/data.source.final.R)] and saved as an _RData_ file. The data set contains over 1.1 million loan observations.
 
 ```{r echo=FALSE}
 load('./loans.RData')
@@ -71,13 +75,12 @@ load('./loans.RData')
 
 ### Inspecting the loans dataframe
 
-Check the top ten records.
+Check a sample of the observations
 
 ```{r}
 head(loans, 10)
 ```
 
-Check the last 10 records.
 
 ```{r}
 tail(loans, 10)
@@ -89,19 +92,19 @@ View the whole dataset.
 View(loans)
 ```
 
-Column names (see Data Overview section for descriptions):
+Names for columns in the dataset (see Data Overview section for descriptions):
 
 ```{r}
 names(loans)
 ```
 
-The shape of the data frame.
+The dimensions of the loans dataframe.
 
 ```{r}
 dim(loans)
 ```
 
-The structure of the data frame.
+The structure of the loans dataframe.
 
 ```{r}
 str(loans)
@@ -113,7 +116,9 @@ Summary of the dataset
 summary(loans)
 ```
 
-Check the number of NA per column
+### Data munging
+
+Check the number of NAs per variable
 
 ```{r}
 character_cols <- names(loans)[sapply(loans, is.character)]
@@ -124,13 +129,13 @@ for(col in character_cols){
 }
 ```
 
+Check the proportion of NAs per variable
+
 ```{r}
 sapply(loans, FUN = function(x) 100 * sum(is.na(x)) / dim(loans)[1])
 ```
 
-### Data munging
-
-Remove all columns that we may not need which include: _id_, _image.id_, _image.template_id_, _video.id_, _video.youtubeId_, _video.title_, _video.thumbnailImageId_, _description.languages_
+Remove columns that we may not need which include: _id_, _image.id_, _image.template_id_, _video.id_, _video.youtubeId_, _video.title_, _video.thumbnailImageId_
 
 ```{r}
 loans$id <- NULL
@@ -142,25 +147,23 @@ loans$video.title <- NULL
 loans$video.thumbnailImageId <- NULL
 ```
 
-Set loans status as categories
+Each loan has a status at any given time. We then set these loan statuses as factors:
 
 ```{r}
 loans$status <- factor(loans$status,
                        levels = unique(loans$status),
                        labels = c("Fundraising", "Funded", "Expired"))
-```
-
-```{r}
 table(loans$status)
 ```
 
-Set sector as categories
+Similarly, we set loan sector as categories:
 
 ```{r}
 loans$sector <- factor(loans$sector)
+table(loans$sector)
 ```
 
-Set latitude and longitude from _location.geo.pairs_
+We also set latitude and longitude from _location.geo.pairs_
 
 ```{r}
 loans <- separate(loans, location.geo.pairs, into=c('location.geo.lat', 'location.geo.long'), sep=' ', remove = TRUE)
@@ -168,19 +171,12 @@ loans$location.geo.lat <- as.numeric(loans$location.geo.lat)
 loans$location.geo.long <- as.numeric(loans$location.geo.long)
 ```
 
-Add a column to identify direct vs non-direct loans. Direct loans do not require field partners hence partner_id is null.
+Most loans are administered through Kiva field partners. However, some loans are given directly to the borrowers. These are identified as _direct_ loans. We add a column to identify direct vs non-direct loans. Direct loans do not require field partners hence partner_id is null.
 
 ```{r}
-# direct_loans <- loans[is.na(loans$partner_id), ]
-# direct_loans$location.country_code
 loans$direct <- as.numeric(is.na(loans$partner_id))
 ```
 
-Add a column to indicate whether loan is borrowed by individual or a group.
-
-```{r}
-#loans$group <- as.integer(loans$borrower_count > 1)
-```
 
 ### Exploratory Plots
 
