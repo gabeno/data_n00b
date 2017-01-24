@@ -517,7 +517,7 @@ ggplot(sector_dist, aes(Sector, Frequency)) +
 
 Evidently, the most popular sectors include "agriculture", "food", "retail". It seems accessing food is the most important activity on the basis of "agriculture"" and "food" sectors topping. Another observation is that small scale business ventures like "retail"" and "services" rank higher than the more capital intensive ventures like "construction", "manufacturing" and "wholesale". "entertainment" is the least popular sector - no one wants to fund leisure activities.
 
-#### Variable: _funding_rate_
+#### funding_rate
 
 This variable defines the rate of success in funding bid by the borrower, in other words how much of the original sought amount was actually funded?
 
@@ -526,23 +526,27 @@ loans$funding_rate <- 100*loans$funded_amount / loans$loan_amount
 summary(loans$funding_rate)
 ```
 
-The average rate of funding is 97.69% with the highest being 113.30%. Funding rate is considered as the proportion of loan which a lender bought. Any value more than 100% was overfunded.
+The average rate of funding is 99.43%. Funding rate is considered as the proportion of loan which a lender bought. We do not have a loan which was overfunded.
 
 ```{r}
-ggplot(loans, aes(x=funding_rate)) + geom_histogram(binwidth=2)
+sum(loans[["funding_rate"]] == 100)
 ```
+
+There are 1,122,521 loans which are fully funded at 100%. The rest,
 
 ```{r}
-sum(loans[["funding_rate"]] <= 100)
+sum(loans[["funding_rate"]] < 100) # => 7,217
 ```
 
-About 1.1M loans are underfunded and ...
+are underfunded. Could these be loans in fundraising stage?
 
 ```{r}
-sum(loans[["funding_rate"]] > 100)
+length(subset(loans, loans$funding_rate < 100)[['status']]) # => 7,217
 ```
 
-only two are overfunded.
+... and Yes, they are loans in "fundraising" stage. 
+
+One of the objectives of this project was to assess the probability of successful funding for a loan application. The variable _funding_rate_ was meant to be our response variable. The dataset contains high success rate with underfunded loans being the only one not fully funded. This makes our objective impossible to achieve.
 
 ### Variable: _funding_duration_
 
@@ -688,6 +692,9 @@ summary(loans$amt_lender_ratio)
 ggplot(loans, aes(x=amt_lender_ratio)) + geom_histogram(binwidth = 50)
 ```
 
+
+
+
 ## Explore Relationships
 
 ```{r}
@@ -745,3 +752,19 @@ ggplot(loans, aes(x=country, y=mean(funded_amount))) +
 ```
 
 Countries with high number of borrowing - Cambodia, Kenya and Phillipines - have low variablity in the amounts loaned. Most people borrow small amounts of money. They are developing economies and imply low cadre pf borrowers trying to raise funds for their projects. 75% of the loans borrowed in these countries is less than $1,250. United States has a high variability and the median loan amount is $5,000. In other countries though, the borrowing is quite varied, e.g Congo and Myanmar.
+
+#### bonus_credit_eligibility
+
+
+
+```{r}
+levels(loans$bonus_credit_eligibility)
+```
+
+```{r}
+table(loans$bonus_credit_eligibility)
+```
+
+```{r}
+ggplot(loans, aes(bonus_credit_eligibility, ..count..)) + geom_bar()
+```
