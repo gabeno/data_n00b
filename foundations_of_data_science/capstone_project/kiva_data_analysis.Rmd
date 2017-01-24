@@ -347,7 +347,7 @@ ggplot(loans, aes(x=funded_amount)) +
 
 The plot shows a similar distribution to that of _loan_amount_. The _funded_amount_ is a proportion of the _loan_amount_ as bid by the lenders. Perhaps there could be cases where a loan is oversubscribed. We shall see if this is the case in further analysis.
 
-#### variable: _borrower_count_
+#### borrower_count
 
 ```{r}
 summary(loans$borrower_count)
@@ -355,7 +355,19 @@ summary(loans$borrower_count)
 
 
 ```{r}
-ggplot(loans, aes(x=borrower_count)) + geom_histogram(binwidth = 3)
+ggplot(loans, aes(x=borrower_count)) + 
+    geom_histogram(binwidth = 3) +
+    scale_y_continuous(labels = comma) +
+    scale_x_continuous(labels = comma) +
+    labs(x = "Borrower Count", y = "Count", title = "Borrower Count Distribution") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
 
 Most loans have individual borrowers or small groups i.e. few people borrowing together. The _borrower_count_ might be more valuable if it is transformed to categories with specific number of people. Making groups for this variable thus:
@@ -366,23 +378,46 @@ Most loans have individual borrowers or small groups i.e. few people borrowing t
 We therefore create a new variable _borrower_group_
 
 ```{r}
-loans$borrower_group <- cut(loans$borrower_count, c(0,1,9,79), labels=c('Individual','Small','Large'), ordered_result = TRUE)
+loans$borrower_group <- cut(loans$borrower_count,
+                            c(0,1,9,79),
+                            labels=c('Individual','Small','Large'),
+                            ordered_result = TRUE)
 ```
 
 Plotting the new _borrower_group_ variable:
 
 ```{r}
-ggplot(loans, aes(x=borrower_group)) + geom_bar()
+ggplot(loans, aes(x=borrower_group)) + 
+    geom_bar(width = .2) +
+    scale_y_continuous(labels = comma) +
+    labs(x = "Borrower Group", y = "Count", title = "Borrower Group Count") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
 
 How does a box plot of the same variable look like?
 
 ```{r}
-#ggplot(loans, aes(borrower_group, borrower_count)) + geom_boxplot()
+ggplot(loans, aes(borrower_group, borrower_count)) + 
+    geom_boxplot() +
+    labs(x = "Borrower Group", y = "Count", title = "Borrower Group Boxplot") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
 
-The different groups show different variability, the least being the "Individual" and "Large" group showing most variability.
-It has some outliers but since the count is small (seen from the preceding plot) it is not necessary to break it down further.
+The "Large" group shows the greatest variability. It has considerable outliers but since the overall count in this group is small (as seen from the preceding plot) it is not necessary to break it down further. The average for each group is 1, 5, and 14 respectively.
 
 #### Variable: _lender_count_
 
