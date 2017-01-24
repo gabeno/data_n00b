@@ -182,7 +182,7 @@ loans$video.title <- NULL
 loans$video.thumbnailImageId <- NULL
 ```
 
-Each loan has a status at any given time. We then set these loan statuses as factors:
+Each loan has a status at any given time. We set these loan statuses as factors:
 
 ```{r}
 loans$status <- factor(loans$status,
@@ -217,7 +217,7 @@ loans$direct <- as.numeric(is.na(loans$partner_id))
 
 This section aims to gain insights for some variables of interest.
 
-#### _status_
+#### status
 
 _status_ informs on the stage a loan has. There are a number of stages as outlined in the Kiva website. Loans for this dataset have the following status:
 
@@ -257,19 +257,31 @@ ggplot(loans, aes(status, ..count..)) +
           axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
 
-#### Variable: _loan_amount_
+#### loan_amount
 
 ```{r}
 summary(loans$loan_amount)
 ```
 
-The average amount of loan borrowed is $837.20 We also observe that the median is lower than the mean by a few hundreds of dollars. This points to existence of high loan amounts. The lowest amount requested is $25, the highest being $10,000.
+The average amount of loan borrowed is $813. We also observe that the median is lower than the mean by a few hundreds of dollars. This points to existence of high loan amounts. The lowest amount requested is $25, the highest being $10,000.
 
 ```{r}
-ggplot(loans, aes(x=loan_amount)) + geom_histogram(binwidth = 200)
+ggplot(loans, aes(x=loan_amount)) +
+    geom_histogram(binwidth = 200) +
+    scale_y_continuous(labels = comma) +
+    scale_x_continuous(labels = comma) +
+    labs(x = "Loan Amount", y = "Count", title = "Loan amount") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
 
-As anticipated, there are a number high loan amounts that cause skew on the plot. Since the focus on this study is to evaluate microloans, we need to compute a sensible cutoff to remove the high loan amounts.
+There are a number high loan amounts that cause skew on the plot. Since the focus on this study is to evaluate microloans, we need to compute a sensible cutoff to remove the high loan amounts.
 
 ```{r}
 # choosing a number of cutoff amounts
@@ -283,20 +295,32 @@ for(amount in cut_off_amounts){
 
 __Notes__:
 
-For a cutoff at an amount of $9,000 only 1,598 observations will be removed. This represents about 0.14% of data. Further, $9,000 is practically a large sum and any amount above it may be safely ignored for purposes of studying microloans.
+For a cutoff at an amount of $9,000 only 1,391 observations will be removed. This represents about 0.13% of data. Further, $9,000 is practically a large sum and any amount above it may be safely ignored for purposes of our study.
 
 ```{r}
 loans <- subset(loans, loans$loan_amount <= 9000)
 summary(loans$loan_amount)
 ```
 
-With the new dataset, 75% of the loan amounts borrowed are less or equal to $1000 and half the loans are not more than $525. The average amount of loan borrowed is $822.60.
+With the new dataset, 75% of the loan amounts borrowed are less or equal to $1000 and half the loans are not more than $500. The average amount of loan borrowed is $799.50.
 
 ```{r}
-ggplot(loans, aes(x=loan_amount)) + geom_histogram(binwidth = 200)
+ggplot(loans, aes(x=loan_amount)) + 
+    geom_histogram(binwidth = 200) +
+    scale_y_continuous(labels = comma) +
+    scale_x_continuous(labels = comma) +
+    labs(x = "Loan Amount", y = "Count", title = "Loan amount") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
 
-Here, it is much clearer that most borrowers go for less than $2,500.
+Here, it is much clearer that most borrowers go for less than $1,250 (3rd qurtile amount is $1,000).
 
 #### Variable: _funded_amount_
 
