@@ -406,7 +406,7 @@ How does a box plot of the same variable look like?
 ```{r}
 ggplot(loans, aes(borrower_group, borrower_count)) + 
     geom_boxplot() +
-    labs(x = "Borrower Group", y = "Count", title = "Borrower Group Boxplot") +
+    labs(x = "Borrower Group", y = "Count", title = "Borrower Groups") +
     theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
           plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
           panel.background = element_rect(fill = "white"),
@@ -419,9 +419,9 @@ ggplot(loans, aes(borrower_group, borrower_count)) +
 
 The "Large" group shows the greatest variability. It has considerable outliers but since the overall count in this group is small (as seen from the preceding plot) it is not necessary to break it down further. The average for each group is 1, 5, and 14 respectively.
 
-#### Variable: _lender_count_
+#### lender_count
 
-This variable also needs groups. We could apply the same treatment as the borrower count for this group.
+This variable probably also needs grouping. We could apply the same treatment on this group as the _borrower_count_.
 
 ```{r}
 summary(loans$lender_count)
@@ -430,12 +430,19 @@ summary(loans$lender_count)
 Lender group average 23 persons per loan. Lenders tend to spread their risk by grouping and buying into loans in small amounts
 
 ```{r}
-ggplot(loans, aes(x=lender_count)) + geom_histogram(binwidth = 5)
+ggplot(loans, aes(x=lender_count)) +
+    geom_histogram(binwidth = 5) +
+    scale_y_continuous(labels = comma) +
+    labs(x = "Lender Count", y = "Count", title = "Lender Count Distribution") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
-
-
-
-choose independently.
 
 From the plot we see most loans having fewer than 50 lenders. We can create 3 lender groups thus:
 * small group  = less than 10 persons
@@ -452,12 +459,23 @@ loans$lender_group <- cut(loans$lender_count, c(0,10,50,2986),
 Plotting the new _borrower_group_ variable:
 
 ```{r}
-ggplot(loans, aes(x=lender_group)) + geom_bar()
+ggplot(loans, aes(x=lender_group)) +
+    geom_bar(width = .2) +
+    scale_y_continuous(labels = comma) +
+    labs(x = "Lender Group", y = "Count", title = "Lender Group Count") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
 
-THe plot suggests most loans have 10-50 lenders, they attract significant number of lenders. Number of loans with greater than 100 lenders are much fewer than the other two categories combined. Practically high loan amounts are much less and it these that would require many more lenders to combine effort, perhaps minimize their risk.
+From the plot we see most loans belong to the medium group (10 - 50 lenders). Loans which attract more than 100 lenders are much fewer than the other two categories combined. THis is also exlplained by the fact that loans with high amounts are much less and it is these loans that would require many more lenders to combine effort - perhaps to minimize their risk.
 
-#### Variable: _sector_
+#### sector
 
 ```{r}
 levels(loans$sector)
