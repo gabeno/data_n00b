@@ -477,9 +477,13 @@ From the plot we see most loans belong to the medium group (10 - 50 lenders). Lo
 
 #### sector
 
+Borrowers have to fill in the sector in which they operate. This variable may be used to assess the purpose of funding. The sectors in this dataset are:
+
 ```{r}
 levels(loans$sector)
 ```
+
+By count and proportion:
 
 ```{r}
 table(loans$sector)
@@ -492,13 +496,24 @@ colnames(sector_dist) <- c('Sector', 'Frequency', 'Percentage')
 sector_dist
 ```
 
+A plot to visualize the information above:
+
 ```{r}
 ggplot(sector_dist, aes(Sector, Frequency)) + 
-    geom_bar(stat="identity") + 
-    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0))
+    geom_bar(stat="identity", width = .6) +
+    scale_y_continuous(labels = comma) +
+    labs(x = "Sector", y = "Count", title = "Sectors Count") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'), angle=90, hjust=0, vjust=0))
 ```
 
-Most popular sectors include "agriculture", "food", "retail". Providing food for the family is an important thing for most breadwinners and this conforms to what the data shows. Retail also is popular because of small businesses that people have.
+Evidently, the most popular sectors include "agriculture", "food", "retail". It seems accessing food is the most important activity on the basis of "agriculture"" and "food" sectors topping. Another observation is that small scale business ventures like "retail"" and "services" rank higher than the more capital intensive ventures like "construction", "manufacturing" and "wholesale". "entertainment" is the least popular sector - no one wants to fund leisure activities.
 
 #### Variable: _bonus_credit_eligibility_
 
