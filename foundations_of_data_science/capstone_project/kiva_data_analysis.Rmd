@@ -548,7 +548,7 @@ length(subset(loans, loans$funding_rate < 100)[['status']]) # => 7,217
 
 One of the objectives of this project was to assess the probability of successful funding for a loan application. The variable _funding_rate_ was meant to be our response variable. The dataset contains high success rate with underfunded loans being the only one not fully funded. This makes our objective impossible to achieve.
 
-### Variable: _funding_duration_
+### funding_duration
 
 This variable defines the period (in days) it takes for a loan to be bought by the lenders.
 
@@ -569,19 +569,14 @@ loans$funding_duration[is.na(loans$funding_duration)] <- mean_duration
 summary(loans$funding_duration)
 ```
 
-There is a loan which has a very long duration. Ideally such a high duration is not practical since a loan can not stay for that long at a "fundraising stage". If we consider a maximum period of 90 days as the funding period, then 339 observations are affected. 90 days is reasonable because it is a common credit period in the finance world.
+The max value points to a loan which has a very long duration. Ideally such a high duration is not practical since a loan should not stay for that long at "fundraising stage". If we consider a maximum period of 90 days as the funding period, then 339 observations are affected. 90 days is reasonable because it is a common credit period in the finance world.
 
 ```{r}
 sum(loans[["funding_duration"]] > 90)
 ```
 
+Further, since there is very little variablity (median and mean values are very close), we can create groups for the funding duration treating them as categories:
 
-```{r}
-ggplot(subset(loans, loans$funding_duration <= 90), aes(x=funding_duration)) + geom_histogram(binwidth = 5)
-# transform to a categorical variable - 30 days and more than 30 days
-```
-
-The plot shows significant occurences at specific values. We can therefor change this to be a categorical variable with:
 * low = less than or equal to 30 days
 * high = more than 30 days
 
@@ -594,10 +589,21 @@ loans$funding_duration <- cut(loans$funding_duration, c(0, 30, 1674),
 
 
 ```{r}
-ggplot(loans, aes(funding_duration, ..count..)) + geom_bar()
+ggplot(loans, aes(funding_duration, ..count..)) + 
+    geom_bar(width = .4) +
+    scale_y_continuous(labels = comma) +
+    labs(x = "Funding Group", y = "Count", title = "Funding Duration") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
 
-More loans are funded within 30 days. Perhaps this goes with the thought that most loan amounts are small thereby they do not need a lot of "funding time".
+More loans are funded within 30 days. Perhaps this goes with the thought that most loan amounts are small thereby they do not need a lot of time to seek funding.
 
 #### Variable: country
 
