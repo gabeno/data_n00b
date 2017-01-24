@@ -67,7 +67,7 @@ The [data](http://build.kiva.org/docs/data/loans) set used in this project has t
 
 ### Loading Data
 
-The data was sourced from [kiva api](http://build.kiva.org/docs/data) via [this script[(https://github.com/gabeno/data_n00b/blob/master/foundations_of_data_science/capstone_project/data.source.final.R)] and saved as an _RData_ file. The data set contains over 1.1 million loan observations.
+The data was sourced from [kiva api](http://build.kiva.org/docs/data) via [this script](https://github.com/gabeno/data_n00b/blob/master/foundations_of_data_science/capstone_project/data.source.final.R) and saved as an _RData_ file. The data set contains over 1.1 million loan observations.
 
 ```{r echo=FALSE}
 load('./loans.RData')
@@ -118,7 +118,7 @@ summary(loans)
 
 ### Data munging
 
-Check the number of NAs per variable
+Check the number of null values (_NAs_) per variable
 
 ```{r}
 character_cols <- names(loans)[sapply(loans, is.character)]
@@ -129,7 +129,7 @@ for(col in character_cols){
 }
 ```
 
-Check the proportion of NAs per variable
+Check the proportion of null values (_NAs_) per variable
 
 ```{r}
 sapply(loans, FUN = function(x) 100 * sum(is.na(x)) / dim(loans)[1])
