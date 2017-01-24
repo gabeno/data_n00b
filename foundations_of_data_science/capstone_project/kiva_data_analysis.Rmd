@@ -293,8 +293,6 @@ for(amount in cut_off_amounts){
 }
 ```
 
-__Notes__:
-
 For a cutoff at an amount of $9,000 only 1,391 observations will be removed. This represents about 0.13% of data. Further, $9,000 is practically a large sum and any amount above it may be safely ignored for purposes of our study.
 
 ```{r}
@@ -309,7 +307,7 @@ ggplot(loans, aes(x=loan_amount)) +
     geom_histogram(binwidth = 200) +
     scale_y_continuous(labels = comma) +
     scale_x_continuous(labels = comma) +
-    labs(x = "Loan Amount", y = "Count", title = "Loan amount") +
+    labs(x = "Loan Amount", y = "Count", title = "Loan Amount Distribution") +
     theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
           plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
           panel.background = element_rect(fill = "white"),
@@ -322,19 +320,32 @@ ggplot(loans, aes(x=loan_amount)) +
 
 Here, it is much clearer that most borrowers go for less than $1,250 (3rd qurtile amount is $1,000).
 
-#### Variable: _funded_amount_
+#### funded_amount
 
 ```{r}
 summary(loans$funded_amount)
 ```
 
-The average funded amount for a loan is $794.10. We have a naive funding success rate of 96.5% by comparing with the average loan amount. Some loans have $0 funding.
+The average funded amount for a loan is $794.20. Some loans have $0 funding - these are probably loans under fundraising.
+We have a naive funding success rate of 96.5% by comparing with the average loan amount.
 
 ```{r}
-ggplot(loans, aes(x=funded_amount)) + geom_histogram(binwidth = 200)
+ggplot(loans, aes(x=funded_amount)) + 
+    geom_histogram(binwidth = 200) +
+    scale_y_continuous(labels = comma) +
+    scale_x_continuous(labels = comma) +
+    labs(x = "Funded Amount", y = "Count", title = "Funded Amount Distribution") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
 
-The plot shows a similar distribution to that of _loan_amount_. The _funded_amount_ is a proportion of the _loan_amount_ bid by the lenders. Perhaps there could be cases where a loan is oversubscribed. We shall see if this is the case in later analysis.
+The plot shows a similar distribution to that of _loan_amount_. The _funded_amount_ is a proportion of the _loan_amount_ as bid by the lenders. Perhaps there could be cases where a loan is oversubscribed. We shall see if this is the case in further analysis.
 
 #### variable: _borrower_count_
 
