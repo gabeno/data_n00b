@@ -841,64 +841,91 @@ ggplot(loans_with_lenders, aes(x=amt_lender_ratio)) +
 The lender ratio has a very narrow range beyond which it assumes huge values. Lenders tend to either place small amounts when they buy loans while others place big amounts. Majority of them place small amounts.
 
 
+### Further Analysis
 
-## Explore Relationships
-
-```{r}
-ggplot(loans, aes(x=loan_amount, y=funded_amount)) + geom_jitter()
+```{r, fig.width=6, fig.height=3}
+median_per_sector <- group_by(loans, sector) %>% summarise(med=median(funded_amount))
+ggplot(median_per_sector, aes(x=sector, y=med)) + 
+    geom_bar(stat="identity", width = .4) +
+    labs(x = "Sector", y = "Average Funded Amount", title = "Average Spend Per Sector") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
+    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=rel(1.2)))
 ```
 
-_funded_amount_ is a proportion of the _loan_amount_ so they are expected to have a strong correlation. The plot above display this.
+"Wholesale" sector has the highest median value. Together with "Construction", "Education", "Entertainment" and "Health", their median values exceed $600. Typically, these sectors demand high dollar amounts - like doing a housing project or funding medication can be very expensive. On the other hand, highly frequent sectors like "Agriculture", "Food" and "Retail" attract small investment amounts - like small retail groceries business and small scale farming.
 
-```{r}
-ggplot(loans, aes(x=borrower_count, y=funded_amount)) + geom_jitter()
+```{r, fig.width=6, fig.height=3}
+median_per_country <- group_by(loans, country) %>% summarise(med=median(funded_amount))
+ggplot(median_per_country, aes(x=country, y=med)) + 
+    geom_bar(stat="identity", width = .6) +
+    scale_y_continuous(labels = comma) +
+    labs(x = "Country", y = "Median Funded Amount", title = "Median Loan By Country") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
+    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=rel(1.2)))
 ```
 
-Not much to deduce from this plot.
+Botswana stands out as having the highest median value _funded_amount_. Majority of the other countries have less than $1,000 median values with just a few having $2,000 and above. This confirms our idea that Kiva largely support microlending.
 
 ```{r}
-ggplot(loans, aes(x=lender_count, y=funded_amount)) + geom_jitter()
-```
-
-Higher loan amounts attract more lenders. It is an indication that most lenders buy small chunks of a loan.
-
-```{r}
-ggplot(loans, aes(x=lender_count, y=borrower_count)) + geom_jitter()
-```
-
-Nothing to deduce in this plot.
-
-```{r, fig.width = 8, fig.height = 6}
-ggplot(loans, aes(x=sector, y=funded_amount)) + 
-    geom_boxplot() + 
-    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=12))
-```
-
-75% of borrowing in all sectors is less than $1,250.
-
-```{r}
-ggplot(loans, aes(sector, ..count.., color=lender_group, fill=lender_group)) + 
-    geom_bar(position="dodge") + 
+lender_prop <- loans %>% 
+    group_by(sector, lender_group) %>% 
+    summarise(n=n()) %>% 
+    mutate(percent=100*n/sum(n))
+ggplot(lender_prop, aes(sector, percent, color=lender_group, fill=lender_group)) + 
+    geom_bar(position="dodge", stat = "identity") +
+    labs(x = "Sector", y = "% Count", title = "% Lenders By Sector") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
     theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0))
 ```
 
-"medium" _lender_group_ dominates the sectors.
+"medium" group of lenders dominates across all sectors implying that almost all loans across all sectors have 10 - 50 lenders.
 
 ```{r}
-ggplot(loans, aes(sector, ..count.., color=borrower_group, fill=borrower_group)) + 
-    geom_bar(position="dodge") + 
+borrower_prop <- loans %>% 
+    group_by(sector, borrower_group) %>% 
+    summarise(n=n()) %>% 
+    mutate(percent=100*n/sum(n))
+ggplot(borrower_prop, aes(sector, percent, color=borrower_group, fill=borrower_group)) + 
+    geom_bar(position="dodge", stat = "identity") +
+    labs(x = "Sector", y = "% Count", title = "% Borrowers By Sector") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
     theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0))
 ```
 
-Indivudual borrowers are dominant across all sectors.
+Individual borrowers are dominate across all sectors, even in the least favorite sectors like "Entertainment". Large group of borrowers are frequently lesser in all the sectors. People like to run projects on their own - sole proprietorship model of business is evident here and it is a common trait of microenterprises.
 
-```{r, fig.width = 8, fig.height = 6}
-ggplot(loans, aes(x=country, y=mean(funded_amount))) + 
-    geom_col() + 
-    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=12))
-```
 
-Countries with high number of borrowing - Cambodia, Kenya and Phillipines - have low variablity in the amounts loaned. Most people borrow small amounts of money. They are developing economies and imply low cadre pf borrowers trying to raise funds for their projects. 75% of the loans borrowed in these countries is less than $1,250. United States has a high variability and the median loan amount is $5,000. In other countries though, the borrowing is quite varied, e.g Congo and Myanmar.
+### Borrowing over time
+
+
 
 #### bonus_credit_eligibility
 
