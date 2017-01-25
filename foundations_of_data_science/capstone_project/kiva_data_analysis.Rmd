@@ -752,7 +752,7 @@ ggplot(loans_prop, aes(num_languages, percent)) +
 
 Most borrower profiles have only one language selected. This is about twice as much as the single language profiles - about 68% for single language profile viz 30% for profiles with two languages. It is of interest checking what languages if any the lenders have on their profiles and if they influence decision to buy loans (loans whose profile owners have same language as themselves).
 
-### Variable: loan_amount/borrower_count
+### loan_amount vs borrower_count
 
 ```{r}
 loans$amt_borrower_ratio <- loans$loan_amount / loans$borrower_count
@@ -760,10 +760,38 @@ summary(loans$amt_borrower_ratio)
 ```
 
 ```{r}
-ggplot(loans, aes(x=amt_borrower_ratio)) + geom_histogram(binwidth = 50)
+ggplot(loans, aes(x=amt_borrower_ratio)) + 
+    geom_histogram(binwidth = 50) +
+    scale_x_continuous(labels = comma) +
+    scale_y_continuous(labels = comma) +
+    labs(x = "# Borrowers", y = "Count", title = "Loan Amount / Borrower Count Ratio") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
 
-The plot shows a right skew. Most loans have lower _loan_amount_ to _borrower_count_ ration. The bimodal nature oof the plot resembles the distribution for the _loan_amount_ and _funded_amount_ plots seen earlier.
+```{r}
+ggplot(loans, aes(x=amt_borrower_ratio)) + 
+    geom_density(adjust = 5) +
+    scale_x_continuous(labels = comma) +
+    scale_y_continuous(labels = comma) +
+    labs(x = "# Borrowers", y = "Count", title = "Loan Amount / Borrower Count Ratio") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+```
+
+Loan amount per borrower assumes a right skewed shape. This implies that borrowers seek loans for small amounts. The most common amount is about $300. From the summary calculation, the average amount per borrower is $400 while 75% are less than $725. The other 25% are high loan amounts up to a maximum of $9,000. The smoothened density plot show the unimodal nature of the data. 
 
 ### Variable: loan_amount/lender_count
 
