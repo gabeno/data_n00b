@@ -214,6 +214,12 @@ Most loans are administered through Kiva field partners. However, some loans are
 loans$direct <- as.numeric(is.na(loans$partner_id))
 ```
 
+Transform the date columns.
+
+```{r}
+loans$posted_date <- as.Date(loans$posted_date)
+loans$planned_expiration_date <- as.Date(loans$planned_expiration_date)
+```
 
 ### Exploratory Plots
 
