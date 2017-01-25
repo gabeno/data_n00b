@@ -719,8 +719,9 @@ Sectors in the plot above attract most of the microlending spend. They can be vi
 
 Sectors present in all top ten countries are "Agriculture" and "Food". "Retail" closely follows missing only in Cambodia. "Agriculture" tops in 5 countries (Cambodia, Equador, El Savaldor, Kenya and Tajikistan) followed by "Retail" in 2 countries (Phillipines and Nicaragua), "Food" in 2 countries (Peru and Uganda) and "Services" in 1 country (Pakistan).
 
+### description languages
 
-### Variable: description languages
+These are languages borrowers choose to use for their loan applications.
 
 ```{r}
 loans$num_languages <- str_count(loans$description.languages, ',') + 1
@@ -731,10 +732,25 @@ summary(loans$num_languages)
 ```
 
 ```{r}
-ggplot(loans, aes(num_languages, ..count..)) + geom_bar()
+loans_prop <- loans %>% 
+    group_by(num_languages) %>% 
+    summarise(count=n()) %>% 
+    mutate(percent=100*count/sum(count))
+ggplot(loans_prop, aes(num_languages, percent)) + 
+    geom_bar(stat="identity") +
+    scale_y_continuous(labels = comma) +
+    labs(x = "# Languages", y = "% Count", title = "Languages Proportion") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
 
-Most borrower profiles have only one language selected. This is about twice as much as the single language profiles.
+Most borrower profiles have only one language selected. This is about twice as much as the single language profiles - about 68% for single language profile viz 30% for profiles with two languages. It is of interest checking what languages if any the lenders have on their profiles and if they influence decision to buy loans (loans whose profile owners have same language as themselves).
 
 ### Variable: loan_amount/borrower_count
 
