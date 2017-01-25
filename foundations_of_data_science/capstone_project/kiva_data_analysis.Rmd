@@ -605,9 +605,9 @@ ggplot(loans, aes(funding_duration, ..count..)) +
 
 More loans are funded within 30 days. Perhaps this goes with the thought that most loan amounts are small thereby they do not need a lot of time to seek funding.
 
-#### Variable: country
+#### country
 
-Let us try to understand where the applicants originate from.
+Loan applicants register their country when they apply for loans.
 
 ```{r}
 loans$country <- factor(loans$location.country)
@@ -625,7 +625,17 @@ Let us plot it for easier visual analysis:
 
 ```{r, fig.width = 8, fig.height = 6}
 ggplot(country_dist, aes(Country, Frequency)) + 
-    geom_bar(stat="identity") + 
+    geom_bar(stat="identity") +
+    scale_y_continuous(labels = comma) +
+    labs(x = "Country", y = "Count", title = "Loan Counts Per Country") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
     theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=12))
 ```
 
@@ -646,17 +656,69 @@ The top ten countries by loan count:
 ```{r}
 country_top_ten <- country_dist[1:10,]
 ggplot(country_top_ten, aes(Country, Frequency), fill=loans$sector) + 
-    geom_bar(stat="identity") + 
-    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=12))
+    geom_bar(stat="identity", width = .4) + 
+    scale_y_continuous(labels = comma) +
+    labs(x = "Country", y = "Count", title = "Top Ten Loan Counts Per Country") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
+    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=rel(1.2)))
 ```
  
 
 ```{r, fig.width = 8, fig.height = 6}
 loans_top_ten <- subset(loans, loans$country %in% country_top_ten[['Country']])
 ggplot(loans_top_ten, aes(country, ..count.., fill=sector)) + 
-    geom_bar(position='dodge') + 
-    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=12))
+    geom_bar(position='dodge') +
+    scale_y_continuous(labels = comma) +
+    labs(x = "Country", y = "Count", title = "Top Ten Countries By Sector") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
+
+Lets plot the top 5 sectors per country.
+
+```{r}
+loans_top_ten_grouped <- group_by(loans_top_ten, country, sector)
+per_sector <- loans_top_ten_grouped %>% 
+    summarise(count_per_sector=n()) %>% 
+    mutate(prop = 100*count_per_sector/sum(count_per_sector)) %>% 
+    arrange(country, desc(count_per_sector)) %>% 
+    slice(seq(5))
+per_sector
+```
+
+```{r}
+ggplot(per_sector, aes(country, prop, fill=sector)) + 
+    geom_bar(stat='identity', position = 'dodge', width = .6) +
+    scale_y_continuous(labels = comma) +
+    labs(x = "Country", y = "% Count", title = "Top Ten Countries By Top Five Sectors") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
+    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=rel(1.2)))
+```
+
+Sectors in the plot above attract most of the microlending spend. They can be viewed as sectors through which poverty reduction efforts are addressed.
+
+Sectors present in all top ten countries are "Agriculture" and "Food". "Retail" closely follows missing only in Cambodia. "Agriculture" tops in 5 countries (Cambodia, Equador, El Savaldor, Kenya and Tajikistan) followed by "Retail" in 2 countries (Phillipines and Nicaragua), "Food" in 2 countries (Peru and Uganda) and "Services" in 1 country (Pakistan).
+
 
 ### Variable: description languages
 
