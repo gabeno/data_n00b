@@ -931,20 +931,58 @@ Individual borrowers are dominate across all sectors, even in the least favorite
 
 ### Borrowing over time
 
-
-
-#### bonus_credit_eligibility
-
-
+Let us now evaluate loans trend over time. We need to compute by year, month and day.
 
 ```{r}
-levels(loans$bonus_credit_eligibility)
+loans <- loans %>% mutate(year=as.numeric(format(posted_date, format = "%Y")),
+                          month=as.numeric(format(posted_date, format = "%m")),
+                          day=as.numeric(format(posted_date, format = "%d")))
 ```
 
 ```{r}
-table(loans$bonus_credit_eligibility)
+trend_year <- loans %>% group_by(year) %>% summarise(n=n())
+trend_year
 ```
 
 ```{r}
-ggplot(loans, aes(bonus_credit_eligibility, ..count..)) + geom_bar()
+ggplot(trend_year, aes(x=year, y=n)) + 
+    geom_line() +
+    scale_y_continuous(labels = comma) +
+    labs(x = "Year", y = "# Loans", title = "Loans Growth") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
+
+Kiva loans facility has grown over time since 2005, the earliest year in the data. It administered 55 loans in the year 2005 and did 170k in the last year.
+
+It seems to be starting to slow down in growth though in the last 2 years. Could this be due to competition from other microlenders?
+
+```{r}
+trend_year_sector <- loans %>% group_by(year, sector) %>% summarise(n=n())
+trend_year_sector
+```
+
+```{r, fig.width=12, fig.height=4}
+ggplot(trend_year_sector, aes(x=year, y=n, color=sector, fill=sector)) + 
+    geom_line() +
+    labs(x = "Year", y = "# Loans", title = "Loans Growth By Sector") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
+    facet_grid(. ~ sector)
+```
+
+"Agriculture", "Food" and "Retail" have rapidly grown over the years. "Personal Use" was introduced last and has a pretty decent uptake. "Housing", "Education" and "Food" had brief negative growth at different times perahps due to fluctuation in building materials prices, access to state student loans or weather conditions respectively. "Wholesale" and "Retail" sectors have flat growth.
+
+### Conclusion
