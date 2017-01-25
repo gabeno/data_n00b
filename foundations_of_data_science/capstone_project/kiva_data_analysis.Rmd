@@ -764,7 +764,7 @@ ggplot(loans, aes(x=amt_borrower_ratio)) +
     geom_histogram(binwidth = 50) +
     scale_x_continuous(labels = comma) +
     scale_y_continuous(labels = comma) +
-    labs(x = "# Borrowers", y = "Count", title = "Loan Amount / Borrower Count Ratio") +
+    labs(x = "$ / Borrower", y = "Count", title = "Loan Amount / Borrower Count Ratio") +
     theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
           plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
           panel.background = element_rect(fill = "white"),
@@ -780,7 +780,7 @@ ggplot(loans, aes(x=amt_borrower_ratio)) +
     geom_density(adjust = 5) +
     scale_x_continuous(labels = comma) +
     scale_y_continuous(labels = comma) +
-    labs(x = "# Borrowers", y = "Count", title = "Loan Amount / Borrower Count Ratio") +
+    labs(x = "$ / Borrower", y = "Count", title = "Loan Amount / Borrower Count Ratio") +
     theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
           plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
           panel.background = element_rect(fill = "white"),
@@ -791,19 +791,54 @@ ggplot(loans, aes(x=amt_borrower_ratio)) +
           axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
 
-Loan amount per borrower assumes a right skewed shape. This implies that borrowers seek loans for small amounts. The most common amount is about $300. From the summary calculation, the average amount per borrower is $400 while 75% are less than $725. The other 25% are high loan amounts up to a maximum of $9,000. The smoothened density plot show the unimodal nature of the data. 
+Loan amount per borrower assumes a right skewed shape. This implies that borrowers seek loans for small amounts. The most common amount is about $300. From the summary calculation, the average amount per borrower is $580 while 75% are less than $725. The other 25% are high loan amounts up to a maximum of $9,000. The smoothened density plot show the unimodal nature of the data. 
 
-### Variable: loan_amount/lender_count
+### loan_amount vs lender_count
 
 ```{r}
-loans$amt_lender_ratio <- loans$loan_amount / loans$lender_count
-summary(loans$amt_lender_ratio)
+loans_with_lenders <- subset(loans, lender_count > 0)
+loans_with_lenders$amt_lender_ratio <- loans_with_lenders$loan_amount / loans_with_lenders$lender_count
+summary(loans_with_lenders$amt_lender_ratio)
+```
+
+THe average Dollar amount per lender is $30. This means many more lenders combine effort to satisfy a loan bid. Previously we saw an average loan amount of $580 leading us to conclude that on average a loan requires at least 19 lenders and points to the fact that lenders tend to spread their risk by buying many loans in small amounts.
+
+The maxmimum amount though is quite out of the ordinary, looks like some lenders made huge investments. We shall try to adjust 
+
+```{r}
+loans_with_lenders <- subset(loans_with_lenders, amt_lender_ratio < 1000)
+ggplot(loans_with_lenders, aes(x=amt_lender_ratio)) + 
+    geom_histogram(binwidth = 30) +
+    scale_x_continuous(labels = comma) +
+    scale_y_continuous(labels = comma) +
+    labs(x = "$ / Lenders", y = "Count", title = "Loan Amount / Lender Count Ratio") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
 
 ```{r}
-ggplot(loans, aes(x=amt_lender_ratio)) + geom_histogram(binwidth = 50)
+ggplot(loans_with_lenders, aes(x=amt_lender_ratio)) + 
+    geom_density(adjust = 5) +
+    scale_x_continuous(labels = comma) +
+    scale_y_continuous(labels = comma) +
+    labs(x = "$ / Lender", y = "Count", title = "Loan Amount / Lender Count Ratio") +
+    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
+          panel.background = element_rect(fill = "white"),
+          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
+          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
 ```
 
+The lender ratio has a very narrow range beyond which it assumes huge values. Lenders tend to either place small amounts when they buy loans while others place big amounts. Majority of them place small amounts.
 
 
 
