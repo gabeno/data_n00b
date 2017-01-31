@@ -4,33 +4,78 @@ author: "Gabriel Majivu"
 date: "11/29/2016"
 output:
   pdf_document: default
-  html_document: default
+  toc: true
+  toc_depth: 2
+  number_sections: true
+  highlight: pygments
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-### Libraries
 
-```{r}
+```{r, message=FALSE, include=FALSE}
 library(dplyr)
 library(readr)
 library(tidyr)
 library(ggplot2)
 library(stringr)
 library(scales)
+library(tidytext)
+```
+
+```{r, include=FALSE}
+custom_theme <- theme_grey() %+replace% theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
+                      plot.title = element_text(size = rel(1.3), hjust='0.5', margin = margin(0, 0, 7, 0, 'mm')),
+                      panel.background = element_rect(fill = "white"),
+                      panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
+                      panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
+                      axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
+                      axis.text.y = element_text(margin = margin(0, 1, 0, 2, 'mm')),
+                      axis.text.x = element_text(margin = margin(1, 0, 2, 0, 'mm')))
+theme_set(custom_theme)
 ```
 
 
-### About
 
-[Kiva](https://www.kiva.org/about) is an international non-profit that allows people to lend money to low-income entrepreneurs and students in over 80 countries. Its mission is to enable people to create opportunity for themselves and for others.
+### 1. About
+
+There has been a shift from traditional credit sources like banks to microlending institutions for individuals and small businesses who find it hard to access bank loan facilities. Microlending organizations have taken to cater for this niche market.
+
+This project has the following goals:
+
+1. To predict if a loan application will attract funding in full, or partially or none at all. This will help borrowers to optimize their loan applications.
+2. To help field partners discover insights that will help them understand their customers better and create a good customer experience for them by advising on their loan applications.
+
+In this project we use data from [Kiva](https://www.kiva.org/about). Kiva is an international non-profit that allows people to lend money to low-income entrepreneurs and students in over 80 countries. Its mission is to enable people to create opportunity for themselves and for others. In brief, Kiva supports microlending across the whole world. They offer loans either directly to borrowers (only in the US) or through appointed field partners who assess the loans need and administer the loans on behalf of the lenders.
+
+Based on this project findings, a field partner will be able to leverage on the insights derived from this study to informatively advise the borrowers who seek funds for their projects.
 
 
-### Loans Data Overview
 
-The [data](http://build.kiva.org/docs/data/loans) set used in this project has these variables:
+### 2. Data
+
+Kiva exposes an API for getting their data. I wrote a [script](https://github.com/gabeno/data_n00b/blob/master/foundations_of_data_science/capstone_project/data.source.final.R) to facilitate getting the data.
+
+```{r}
+load('./loans.RData')
+```
+
+
+#### 2.1 Inspecting the Loans Dataset
+
+Data types for columns in the loan dataset:
+
+```{r}
+str(loans, vec.len=2)
+```
+
+An overview of the data variables is below:
+
+```{r}
+names(loans)
+```
 
 1. __id__: unique id of the borrower
 2. __name__: name of the borrower
@@ -71,89 +116,31 @@ The [data](http://build.kiva.org/docs/data/loans) set used in this project has t
 31. __video.thumbnailImageId__: Thumbnail id for the video.
 
 
-### Loading Data
-
-The data was sourced from [kiva api](http://build.kiva.org/docs/data) via [this script](https://github.com/gabeno/data_n00b/blob/master/foundations_of_data_science/capstone_project/data.source.final.R) and saved as an _RData_ file. The data set contains over 1.1 million loan observations.
-
-```{r echo=FALSE}
-load('./loans.RData')
+```{r, include=FALSE}
+head(loans, 3)
 ```
 
 
-### Kiva by numbers
-
-A brief look into the data set highlighting important numbers:
-
-```{r}
-length(unique(loans$location.country_code))
+```{r, include=FALSE}
+tail(loans, 3)
 ```
 
-The Kiva dataset has 91 countries represented.
-
-```{r}
-length(unique(loans$id))
-```
-
-Over 1.1M borrowers have sought funding through Kiva.
-
-```{r}
-sum(loans[['funded_amount']])
-```
-
-Total amount of funding is $949M.
-
-```{r}
-sum(loans[['funded_amount']]) / sum(loans[['loan_amount']]) * 100
-```
-
-Repayment rate is 96.4%.
-
-
-### Inspecting the loans dataframe
-
-Check a sample of the observations
-
-```{r}
-head(loans, 10)
-```
-
-
-```{r}
-tail(loans, 10)
-```
-
-View the whole dataset.
-
-```{r echo=FALSE}
+```{r, include=FALSE}
 View(loans)
 ```
 
-Names for columns in the dataset (see Data Overview section for descriptions):
-
-```{r}
-names(loans)
-```
-
-The dimensions of the loans dataframe.
+The loans dataframe has over 1.1M rows of observations.
 
 ```{r}
 dim(loans)
 ```
 
-The structure of the loans dataframe.
+Summary statistics of the dataset:
 
-```{r}
-str(loans)
-```
 
-Summary of the dataset
-
-```{r}
+```{r, include=FALSE}
 summary(loans)
 ```
-
-
-### Data munging
 
 Check the number of null values (_NAs_) per variable
 
@@ -168,9 +155,43 @@ for(col in character_cols){
 
 Check the proportion of null values (_NAs_) per variable
 
-```{r}
+```{r, include=FALSE}
 sapply(loans, FUN = function(x) 100 * sum(is.na(x)) / dim(loans)[1])
 ```
+
+
+
+### 2.2 Kiva by numbers
+
+A brief look into the data set highlighting important numbers:
+
+* The number of countries Kiva has facilitated loans:
+
+```{r}
+length(unique(loans$location.country_code))
+```
+
+* The number of unique borrowers over time:
+
+```{r}
+length(unique(loans$id))
+```
+
+* The total amount of loans funded:
+
+```{r}
+sum(loans[['funded_amount']])
+```
+
+* Loan repayment rate:
+
+```{r}
+sum(loans[['funded_amount']]) / sum(loans[['loan_amount']]) * 100
+```
+
+
+
+### 2.3 Data munging
 
 Remove columns that we may not need which include: _id_, _image.id_, _image.template_id_, _video.id_, _video.youtubeId_, _video.title_, _video.thumbnailImageId_
 
@@ -193,7 +214,7 @@ loans$status <- factor(loans$status,
 table(loans$status)
 ```
 
-Similarly, we set loan sector as categories:
+Similarly, we set loan sector as factors:
 
 ```{r}
 loans$sector <- factor(loans$sector)
@@ -203,7 +224,10 @@ table(loans$sector)
 We also set latitude and longitude from _location.geo.pairs_
 
 ```{r}
-loans <- separate(loans, location.geo.pairs, into=c('location.geo.lat', 'location.geo.long'), sep=' ', remove = TRUE)
+loans <- separate(loans, location.geo.pairs, 
+                  into=c('location.geo.lat', 'location.geo.long'), 
+                  sep=' ', 
+                  remove = TRUE)
 loans$location.geo.lat <- as.numeric(loans$location.geo.lat)
 loans$location.geo.long <- as.numeric(loans$location.geo.long)
 ```
@@ -221,15 +245,17 @@ loans$posted_date <- as.Date(loans$posted_date)
 loans$planned_expiration_date <- as.Date(loans$planned_expiration_date)
 ```
 
-### Exploratory Plots
+
+
+### 2.4 Data Exploration
 
 This section aims to gain insights for some variables of interest.
 
-#### status
+#### 2.4.1 status
 
-_status_ informs on the stage a loan has. There are a number of stages as outlined in the Kiva website. Loans for this dataset have the following status:
+_status_ implies the stage a loan has. There are a number of stages as outlined in the Kiva website. Loans for this dataset have the following status:
 
-```{r}
+```{r, include=FALSE}
 levels(loans$status)
 ```
 
@@ -242,7 +268,7 @@ colnames(status_dist) <- c('Status', 'Frequency', 'Percentage')
 status_dist
 ```
 
-95.54% of the loans have been funded and only 0.62% are in the fundraising stage. Unfortunately, the "Expired" status has not been explained on the kiva website. Since it is ambiguous, we shall remove the affected rows from the dataset.
+95.54% of the loans have been funded and only 0.62% are in the fundraising stage. Unfortunately, the "Expired" status has not been explained on the kiva website so it is ambiguous. For these reasons, we shall remove rows with this status from the dataset.
 
 ```{r}
 loans <- subset(loans, status=='Fundraising' | status=='Funded')
@@ -250,22 +276,14 @@ loans <- subset(loans, status=='Fundraising' | status=='Funded')
 
 A plot for the status variable:
 
-```{r}
+```{r, echo=FALSE}
 ggplot(loans, aes(status, ..count..)) +
     geom_bar(width=.2) +
     scale_y_continuous(labels = comma) +
-    labs(x = "Loan Status", y = "Count", title = "Loan Status by count") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "Status", y = "Count", title = "Loan Status by count")
 ```
 
-#### loan_amount
+#### 2.4.2 loan_amount
 
 ```{r}
 summary(loans$loan_amount)
@@ -273,20 +291,12 @@ summary(loans$loan_amount)
 
 The average amount of loan borrowed is $813. We also observe that the median is lower than the mean by a few hundreds of dollars. This points to existence of high loan amounts. The lowest amount requested is $25, the highest being $10,000.
 
-```{r}
+```{r, echo=FALSE}
 ggplot(loans, aes(x=loan_amount)) +
     geom_histogram(binwidth = 200) +
     scale_y_continuous(labels = comma) +
     scale_x_continuous(labels = comma) +
-    labs(x = "Loan Amount", y = "Count", title = "Loan amount") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "Amount ($)", y = "Count", title = "Loan amount")
 ```
 
 There are a number high loan amounts that cause skew on the plot. Since the focus on this study is to evaluate microloans, we need to compute a sensible cutoff to remove the high loan amounts.
@@ -297,7 +307,8 @@ cut_off_amounts <- c(5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000)
 for(amount in cut_off_amounts){
     count <- sum(loans$loan_amount > amount)
     proportion <- 100 * count / dim(loans)[1]
-    print(paste("cut_off_amount =", amount, ", count =", count,', proportion =' ,proportion, '%'))
+    print(paste("cut_off_amount =", amount, 
+                ", count =", count,', proportion =' ,proportion, '%'))
 }
 ```
 
@@ -310,25 +321,17 @@ summary(loans$loan_amount)
 
 With the new dataset, 75% of the loan amounts borrowed are less or equal to $1000 and half the loans are not more than $500. The average amount of loan borrowed is $799.50.
 
-```{r}
+```{r, echo=FALSE}
 ggplot(loans, aes(x=loan_amount)) + 
     geom_histogram(binwidth = 200) +
     scale_y_continuous(labels = comma) +
     scale_x_continuous(labels = comma) +
-    labs(x = "Loan Amount", y = "Count", title = "Loan Amount Distribution") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "Amount ($)", y = "Count", title = "Loan Amount Distribution")
 ```
 
-Here, it is much clearer that most borrowers go for less than $1,250 (3rd qurtile amount is $1,000).
+Here, it is much clearer that most borrowers go for less than $1,250 (3rd quartile amount is $1,000).
 
-#### funded_amount
+#### 2.4.3 funded_amount
 
 ```{r}
 summary(loans$funded_amount)
@@ -337,45 +340,29 @@ summary(loans$funded_amount)
 The average funded amount for a loan is $794.20. Some loans have $0 funding - these are probably loans under fundraising.
 We have a naive funding success rate of 96.5% by comparing with the average loan amount.
 
-```{r}
+```{r, echo=FALSE}
 ggplot(loans, aes(x=funded_amount)) + 
     geom_histogram(binwidth = 200) +
     scale_y_continuous(labels = comma) +
     scale_x_continuous(labels = comma) +
-    labs(x = "Funded Amount", y = "Count", title = "Funded Amount Distribution") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "Amount ($)", y = "Count", title = "Funded Amount Distribution")
 ```
 
 The plot shows a similar distribution to that of _loan_amount_. The _funded_amount_ is a proportion of the _loan_amount_ as bid by the lenders. Perhaps there could be cases where a loan is oversubscribed. We shall see if this is the case in further analysis.
 
-#### borrower_count
+#### 2.4.4 borrower_count
 
 ```{r}
 summary(loans$borrower_count)
 ```
 
 
-```{r}
+```{r, echo=FALSE}
 ggplot(loans, aes(x=borrower_count)) + 
     geom_histogram(binwidth = 3) +
     scale_y_continuous(labels = comma) +
     scale_x_continuous(labels = comma) +
-    labs(x = "Borrower Count", y = "Count", title = "Borrower Count Distribution") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "Borrower Count", y = "Count", title = "Borrower Count Distribution")
 ```
 
 Most loans have individual borrowers or small groups i.e. few people borrowing together. The _borrower_count_ might be more valuable if it is transformed to categories with specific number of people. Making groups for this variable thus:
@@ -394,40 +381,24 @@ loans$borrower_group <- cut(loans$borrower_count,
 
 Plotting the new _borrower_group_ variable:
 
-```{r}
+```{r, echo=FALSE}
 ggplot(loans, aes(x=borrower_group)) + 
     geom_bar(width = .2) +
     scale_y_continuous(labels = comma) +
-    labs(x = "Borrower Group", y = "Count", title = "Borrower Group Count") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "Borrower Group", y = "Count", title = "Borrower Group Count")
 ```
 
 How does a box plot of the same variable look like?
 
-```{r}
+```{r, echo=FALSE}
 ggplot(loans, aes(borrower_group, borrower_count)) + 
     geom_boxplot() +
-    labs(x = "Borrower Group", y = "Count", title = "Borrower Groups") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "Borrower Group", y = "Count", title = "Borrower Groups")
 ```
 
 The "Large" group shows the greatest variability. It has considerable outliers but since the overall count in this group is small (as seen from the preceding plot) it is not necessary to break it down further. The average for each group is 1, 5, and 14 respectively.
 
-#### lender_count
+#### 2.4.5 lender_count
 
 This variable probably also needs grouping. We could apply the same treatment on this group as the _borrower_count_.
 
@@ -437,19 +408,11 @@ summary(loans$lender_count)
 
 Lender group average 23 persons per loan. Lenders tend to spread their risk by grouping and buying into loans in small amounts
 
-```{r}
+```{r, echo=FALSE}
 ggplot(loans, aes(x=lender_count)) +
     geom_histogram(binwidth = 5) +
     scale_y_continuous(labels = comma) +
-    labs(x = "Lender Count", y = "Count", title = "Lender Count Distribution") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "Lender Count", y = "Count", title = "Lender Count Distribution")
 ```
 
 From the plot we see most loans having fewer than 50 lenders. We can create 3 lender groups thus:
@@ -466,24 +429,16 @@ loans$lender_group <- cut(loans$lender_count, c(0,10,50,2986),
 
 Plotting the new _borrower_group_ variable:
 
-```{r}
+```{r, echo=FALSE}
 ggplot(loans, aes(x=lender_group)) +
     geom_bar(width = .2) +
     scale_y_continuous(labels = comma) +
-    labs(x = "Lender Group", y = "Count", title = "Lender Group Count") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "Lender Group", y = "Count", title = "Lender Group Count")
 ```
 
 From the plot we see most loans belong to the medium group (10 - 50 lenders). Loans which attract more than 100 lenders are much fewer than the other two categories combined. THis is also exlplained by the fact that loans with high amounts are much less and it is these loans that would require many more lenders to combine effort - perhaps to minimize their risk.
 
-#### sector
+#### 2.4.6 sector
 
 Borrowers have to fill in the sector in which they operate. This variable may be used to assess the purpose of funding. The sectors in this dataset are:
 
@@ -498,34 +453,27 @@ table(loans$sector)
 ```
 
 ```{r}
-sector_dist <- data.frame(sort(table(loans$sector), decreasing = TRUE))
+sector_dist <- data.frame(sort(table(loans$sector)))
 sector_dist$Percentage <- sector_dist$Freq / sum(sector_dist$Freq) * 100
 colnames(sector_dist) <- c('Sector', 'Frequency', 'Percentage')
-sector_dist
+# sector_dist
 ```
 
 A plot to visualize the information above:
 
-```{r}
+```{r, echo=FALSE}
 ggplot(sector_dist, aes(Sector, Frequency)) + 
     geom_bar(stat="identity", width = .6) +
     scale_y_continuous(labels = comma) +
-    labs(x = "Sector", y = "Count", title = "Sectors Count") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'), angle=90, hjust=0, vjust=0))
+    labs(x = "Sector", y = "Count", title = "Loan Count per Sector") +
+    coord_flip()
 ```
 
-Evidently, the most popular sectors include "agriculture", "food", "retail". It seems accessing food is the most important activity on the basis of "agriculture"" and "food" sectors topping. Another observation is that small scale business ventures like "retail"" and "services" rank higher than the more capital intensive ventures like "construction", "manufacturing" and "wholesale". "entertainment" is the least popular sector - no one wants to fund leisure activities.
+Evidently, the most active sectors include "agriculture", "food", "retail". It seems accessing food is the most important activity on the basis of "agriculture"" and "food" sectors topping by the highest number of loans. Another observation is that small scale business ventures like "retail"" and "services" rank higher than the more capital intensive ventures like "construction", "manufacturing" and "wholesale". "entertainment" is the least popular sector - no one wants to fund leisure activities.
 
-#### funding_rate
+#### 2.4.7 funding_rate
 
-This variable defines the rate of success in funding bid by the borrower, in other words how much of the original sought amount was actually funded?
+This is a new variable which defines the rate of success in funding bid by the borrower, in other words how much of the original sought amount was actually funded?
 
 ```{r}
 loans$funding_rate <- 100*loans$funded_amount / loans$loan_amount
@@ -541,20 +489,20 @@ sum(loans[["funding_rate"]] == 100)
 There are 1,122,521 loans which are fully funded at 100%. The rest,
 
 ```{r}
-sum(loans[["funding_rate"]] < 100) # => 7,217
+sum(loans[["funding_rate"]] < 100)
 ```
 
 are underfunded. Could these be loans in fundraising stage?
 
 ```{r}
-length(subset(loans, loans$funding_rate < 100)[['status']]) # => 7,217
+length(subset(loans, loans$funding_rate < 100)[['status']])
 ```
 
 ... and Yes, they are loans in "fundraising" stage. 
 
 One of the objectives of this project was to assess the probability of successful funding for a loan application. The variable _funding_rate_ was meant to be our response variable. The dataset contains high success rate with underfunded loans being the only one not fully funded. This makes our objective impossible to achieve.
 
-### funding_duration
+#### 2.4.8 funding_duration
 
 This variable defines the period (in days) it takes for a loan to be bought by the lenders.
 
@@ -594,103 +542,72 @@ loans$funding_duration <- cut(loans$funding_duration, c(0, 30, 1674),
 ```
 
 
-```{r}
+```{r, echo=FALSE}
 ggplot(loans, aes(funding_duration, ..count..)) + 
     geom_bar(width = .4) +
     scale_y_continuous(labels = comma) +
-    labs(x = "Funding Group", y = "Count", title = "Funding Duration") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "Duration", y = "Count", title = "Funding Duration")
 ```
 
 More loans are funded within 30 days. Perhaps this goes with the thought that most loan amounts are small thereby they do not need a lot of time to seek funding.
 
-#### country
+#### 2.4.9 country
 
 Loan applicants register their country when they apply for loans.
 
 ```{r}
 loans$country <- factor(loans$location.country)
-table(loans$country)
+# table(loans$country)
 ```
 
 ```{r}
-country_dist <- data.frame(sort(table(loans$country), decreasing = TRUE))
+country_dist <- data.frame(sort(table(loans$country)))
 country_dist$Percentage <- country_dist$Freq / sum(country_dist$Freq) * 100
 colnames(country_dist) <- c('Country', 'Frequency', 'Percentage')
-country_dist
+# country_dist
 ```
 
-Let us plot it for easier visual analysis:
-
-```{r, fig.width = 8, fig.height = 6}
-ggplot(country_dist, aes(Country, Frequency)) + 
+```{r, fig.height = 6, include=FALSE}
+ggplot(country_dist, aes(Country, Percentage)) + 
     geom_bar(stat="identity") +
     scale_y_continuous(labels = comma) +
-    labs(x = "Country", y = "Count", title = "Loan Counts Per Country") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
-    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=12))
+    labs(x = "Country", y = "% Count", title = "Loan Counts Per Country") +
+    coord_flip()
 ```
 
 Kenya and Phillipines have the high counts for borrowers. Perhaps it would be intersting to complement this dataset with one with economic ranking for countries to understand if there is a relationship.
 
 The top ten countries by loan count:
- - Phillipines (19.4%)
- - Kenya (10.0%)
- - Peru (6.78%)
- - Cambodia (5.34%)
- - El Salvador (4.53%)
- - Uganda (3.34%)
- - Nicaragua (3.28%)
- - Tajikistan (2.98%)
- - Pakistan (2.86%)
- - Equador (2.38%)
+1. Phillipines (19.4%)
+2. Kenya (10.0%)
+3. Peru (6.78%)
+4. Cambodia (5.34%)
+5. El Salvador (4.53%)
+6. Uganda (3.34%)
+7. Nicaragua (3.28%)
+8. Tajikistan (2.98%)
+9. Pakistan (2.86%)
+10. Equador (2.38%)
  
-```{r}
-country_top_ten <- country_dist[1:10,]
-ggplot(country_top_ten, aes(Country, Frequency), fill=loans$sector) + 
+The top ten countries account for 60.89% of the total loans.
+ 
+```{r, echo=FALSE}
+country_top_ten <- country_dist[80:89,]
+ggplot(country_top_ten, aes(Country, Percentage), fill=loans$sector) + 
     geom_bar(stat="identity", width = .4) + 
     scale_y_continuous(labels = comma) +
-    labs(x = "Country", y = "Count", title = "Top Ten Loan Counts Per Country") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
+    labs(x = "Country", y = "% Count", title = "Top Ten Loan Counts Per Country") +
     theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=rel(1.2)))
 ```
  
 
-```{r, fig.width = 8, fig.height = 6}
+```{r, fig.width = 8, fig.height = 6, echo=FALSE}
 loans_top_ten <- subset(loans, loans$country %in% country_top_ten[['Country']])
 ggplot(loans_top_ten, aes(country, ..count.., fill=sector)) + 
     geom_bar(position='dodge') +
     scale_y_continuous(labels = comma) +
     labs(x = "Country", y = "Count", title = "Top Ten Countries By Sector") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=rel(1.2)))
 ```
 
 Lets plot the top 5 sectors per country.
@@ -702,22 +619,14 @@ per_sector <- loans_top_ten_grouped %>%
     mutate(prop = 100*count_per_sector/sum(count_per_sector)) %>% 
     arrange(country, desc(count_per_sector)) %>% 
     slice(seq(5))
-per_sector
+#per_sector
 ```
 
-```{r}
+```{r, echo=FALSE}
 ggplot(per_sector, aes(country, prop, fill=sector)) + 
     geom_bar(stat='identity', position = 'dodge', width = .6) +
     scale_y_continuous(labels = comma) +
     labs(x = "Country", y = "% Count", title = "Top Ten Countries By Top Five Sectors") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
     theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=rel(1.2)))
 ```
 
@@ -725,7 +634,7 @@ Sectors in the plot above attract most of the microlending spend. They can be vi
 
 Sectors present in all top ten countries are "Agriculture" and "Food". "Retail" closely follows missing only in Cambodia. "Agriculture" tops in 5 countries (Cambodia, Equador, El Savaldor, Kenya and Tajikistan) followed by "Retail" in 2 countries (Phillipines and Nicaragua), "Food" in 2 countries (Peru and Uganda) and "Services" in 1 country (Pakistan).
 
-### description languages
+#### 2.4.10 description languages
 
 These are languages borrowers choose to use for their loan applications.
 
@@ -742,64 +651,44 @@ loans_prop <- loans %>%
     group_by(num_languages) %>% 
     summarise(count=n()) %>% 
     mutate(percent=100*count/sum(count))
+```
+
+```{r, echo=FALSE}
 ggplot(loans_prop, aes(num_languages, percent)) + 
     geom_bar(stat="identity") +
     scale_y_continuous(labels = comma) +
-    labs(x = "# Languages", y = "% Count", title = "Languages Proportion") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "# Languages", y = "% Count", title = "Languages Proportion")
 ```
 
 Most borrower profiles have only one language selected. This is about twice as much as the single language profiles - about 68% for single language profile viz 30% for profiles with two languages. It is of interest checking what languages if any the lenders have on their profiles and if they influence decision to buy loans (loans whose profile owners have same language as themselves).
 
-### loan_amount vs borrower_count
+
+#### 2.4.11 loan_amount vs borrower_count
 
 ```{r}
 loans$amt_borrower_ratio <- loans$loan_amount / loans$borrower_count
 summary(loans$amt_borrower_ratio)
 ```
 
-```{r}
+```{r, echo=FALSE}
 ggplot(loans, aes(x=amt_borrower_ratio)) + 
     geom_histogram(binwidth = 50) +
     scale_x_continuous(labels = comma) +
     scale_y_continuous(labels = comma) +
-    labs(x = "$ / Borrower", y = "Count", title = "Loan Amount / Borrower Count Ratio") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "$ / Borrower", y = "Count", title = "Loan Amount / Borrower Count Ratio")
 ```
 
-```{r}
+```{r, echo=FALSE}
 ggplot(loans, aes(x=amt_borrower_ratio)) + 
     geom_density(adjust = 5) +
     scale_x_continuous(labels = comma) +
     scale_y_continuous(labels = comma) +
-    labs(x = "$ / Borrower", y = "Count", title = "Loan Amount / Borrower Count Ratio") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "$ / Borrower", y = "Count", title = "Loan Amount / Borrower Count Ratio")
 ```
 
-Loan amount per borrower assumes a right skewed shape. This implies that borrowers seek loans for small amounts. The most common amount is about $300. From the summary calculation, the average amount per borrower is $580 while 75% are less than $725. The other 25% are high loan amounts up to a maximum of $9,000. The smoothened density plot show the unimodal nature of the data. 
+Loan amount per borrower assumes a right skewed shape - there is a longtail to the right. Most of the borrowers seek small amount loans and there are also borrowers with high dollar amounts. From the summary calculation, the average amount per borrower is $580 while 75% are less than $725. The other 25% are high loan amounts up to a maximum of $9,000. The smoothened density plot show the unimodal nature of the data with a mode of about $300. 
 
-### loan_amount vs lender_count
+#### 2.4.12 loan_amount vs lender_count
 
 ```{r}
 loans_with_lenders <- subset(loans, lender_count > 0)
@@ -807,25 +696,18 @@ loans_with_lenders$amt_lender_ratio <- loans_with_lenders$loan_amount / loans_wi
 summary(loans_with_lenders$amt_lender_ratio)
 ```
 
-THe average Dollar amount per lender is $30. This means many more lenders combine effort to satisfy a loan bid. Previously we saw an average loan amount of $580 leading us to conclude that on average a loan requires at least 19 lenders and points to the fact that lenders tend to spread their risk by buying many loans in small amounts.
-
-The maxmimum amount though is quite out of the ordinary, looks like some lenders made huge investments. We shall try to adjust 
+The maxmimum amount though is quite out of the ordinary, looks like some lenders made huge investments. We adjust for this. 
 
 ```{r}
 loans_with_lenders <- subset(loans_with_lenders, amt_lender_ratio < 1000)
+```
+
+```{r, echo=FALSE}
 ggplot(loans_with_lenders, aes(x=amt_lender_ratio)) + 
     geom_histogram(binwidth = 30) +
     scale_x_continuous(labels = comma) +
     scale_y_continuous(labels = comma) +
-    labs(x = "$ / Lenders", y = "Count", title = "Loan Amount / Lender Count Ratio") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "$ / Lenders", y = "Count", title = "Loan Amount / Lender Count Ratio")
 ```
 
 ```{r}
@@ -833,105 +715,113 @@ ggplot(loans_with_lenders, aes(x=amt_lender_ratio)) +
     geom_density(adjust = 5) +
     scale_x_continuous(labels = comma) +
     scale_y_continuous(labels = comma) +
-    labs(x = "$ / Lender", y = "Count", title = "Loan Amount / Lender Count Ratio") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "$ / Lender", y = "Count", title = "Loan Amount / Lender Count Ratio")
 ```
+
+THe average Dollar amount per lender is $30. This means many more lenders combine effort to satisfy a loan bid. Previously we saw an average loan amount of $580 leading us to conclude that on average a loan requires at least 19 lenders and points to the fact that lenders tend to spread their risk by buying multiple loans and putting in small amounts.
 
 The lender ratio has a very narrow range beyond which it assumes huge values. Lenders tend to either place small amounts when they buy loans while others place big amounts. Majority of them place small amounts.
 
 
-### Further Analysis
+### 3. Other Analysis
 
-```{r, fig.width=6, fig.height=3}
-median_per_sector <- group_by(loans, sector) %>% summarise(med=median(funded_amount))
-ggplot(median_per_sector, aes(x=sector, y=med)) + 
-    geom_bar(stat="identity", width = .4) +
-    labs(x = "Sector", y = "Average Funded Amount", title = "Average Spend Per Sector") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
-    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=rel(1.2)))
+#### Loan awarded per sector
+
+```{r}
+median_per_sector <- group_by(loans, sector) %>% 
+    summarise(med=median(funded_amount))
+#median_per_sector <- arrange(median_per_sector, desc(med))
 ```
 
-"Wholesale" sector has the highest median value. Together with "Construction", "Education", "Entertainment" and "Health", their median values exceed $600. Typically, these sectors demand high dollar amounts - like doing a housing project or funding medication can be very expensive. On the other hand, highly frequent sectors like "Agriculture", "Food" and "Retail" attract small investment amounts - like small retail groceries business and small scale farming.
+```{r, echo=FALSE}
+ggplot(median_per_sector, aes(x=reorder(sector, med), y=med)) + 
+    geom_bar(stat="identity", width = .4) +
+    labs(x = "Sector", y = "Average Funded Amount ($)",
+         title = "Average Spend Per Sector") +
+    coord_flip()
+```
 
-```{r, fig.width=6, fig.height=3}
+"Wholesale" sector has the highest median value. Together with "Construction", "Education", "Entertainment" and "Health", their median values equal or exceed $600. Typically, these sectors demand high dollar amounts - like doing a housing project or funding medication can be very expensive.
+
+On the other hand, highly frequent sectors like "Agriculture", "Food" and "Retail" attract small investment amounts - like small retail groceries business and small scale farming.
+
+#### Loan Distribution By Country
+
+```{r}
 median_per_country <- group_by(loans, country) %>% summarise(med=median(funded_amount))
-ggplot(median_per_country, aes(x=country, y=med)) + 
+```
+
+```{r, fig.height=6, include=FALSE}
+ggplot(median_per_country, aes(x=reorder(country, med), y=med)) + 
     geom_bar(stat="identity", width = .6) +
     scale_y_continuous(labels = comma) +
-    labs(x = "Country", y = "Median Funded Amount", title = "Median Loan By Country") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
-    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=rel(1.2)))
+    labs(x = "Country", y = "Median Funded Amount ($)", title = "Median Loan By Country") +
+    coord_flip()
 ```
 
-Botswana stands out as having the highest median value _funded_amount_. Majority of the other countries have less than $1,000 median values with just a few having $2,000 and above. This confirms our idea that Kiva largely support microlending.
+Botswana stands out as having the highest median value while it has one loan recorded. This probably means a better way to look at this is to narrow down to the previously identified top ten countries.
+
+```{r}
+top_ten <- loans %>% filter(country %in% country_top_ten$Country)
+median_per_country <- group_by(top_ten, country) %>% summarise(med=median(funded_amount))
+```
+
+```{r, echo=FALSE}
+ggplot(median_per_country, aes(x=reorder(country, med), y=med)) + 
+    geom_bar(stat="identity", width = .6) +
+    scale_y_continuous(labels = comma) +
+    labs(x = "Country", y = "Median Funded Amount ($)", title = "Median Loan By Country") +
+    coord_flip()
+```
+
+Previously we saw that "Agriculture", "Food" and "Retail" are sectors that dominate the top ten countries.
+
+#### Lender Distribution Per Sector
 
 ```{r}
 lender_prop <- loans %>% 
     group_by(sector, lender_group) %>% 
     summarise(n=n()) %>% 
     mutate(percent=100*n/sum(n))
+```
+
+```{r, echo=FALSE}
 ggplot(lender_prop, aes(sector, percent, color=lender_group, fill=lender_group)) + 
     geom_bar(position="dodge", stat = "identity") +
     labs(x = "Sector", y = "% Count", title = "% Lenders By Sector") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
-    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0))
+    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=rel(1.2)))
 ```
 
-"medium" group of lenders dominates across all sectors implying that almost all loans across all sectors have 10 - 50 lenders.
+"medium" group of lenders dominates across all sectors implying that almost all loans across all sectors have 10 - 50 lenders. This adds weight to our postulation that a loan requires 19 lenders to buy it.
+
+For borrowers,
 
 ```{r}
 borrower_prop <- loans %>% 
     group_by(sector, borrower_group) %>% 
     summarise(n=n()) %>% 
     mutate(percent=100*n/sum(n))
+```
+
+```{r, echo=FALSE}
 ggplot(borrower_prop, aes(sector, percent, color=borrower_group, fill=borrower_group)) + 
     geom_bar(position="dodge", stat = "identity") +
     labs(x = "Sector", y = "% Count", title = "% Borrowers By Sector") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
     theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0))
 ```
 
-Individual borrowers are dominate across all sectors, even in the least favorite sectors like "Entertainment". Large group of borrowers are frequently lesser in all the sectors. People like to run projects on their own - sole proprietorship model of business is evident here and it is a common trait of microenterprises.
+Individual borrowers are dominate all sectors, even in the least favorite sectors like "Entertainment". Large group of borrowers are less in all the sectors. People like to run projects on their own - sole proprietorship model of business is evident here and it is a common trait of microenterprises.
 
 
-### Borrowing over time
+#### Time Aspect of the Loans
 
 Let us now evaluate loans trend over time. We need to compute by year, month and day.
+
+_NOTE_: The data set covers only upto mid December 2016 when the data was fetched.
+
+```{r}
+max(loans$posted_date)
+```
 
 ```{r}
 loans <- loans %>% mutate(year=as.numeric(format(posted_date, format = "%Y")),
@@ -944,45 +834,74 @@ trend_year <- loans %>% group_by(year) %>% summarise(n=n())
 trend_year
 ```
 
-```{r}
+```{r, echo=FALSE}
 ggplot(trend_year, aes(x=year, y=n)) + 
     geom_line() +
     scale_y_continuous(labels = comma) +
-    labs(x = "Year", y = "# Loans", title = "Loans Growth") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm')))
+    labs(x = "Year", y = "# Loans", title = "Loans Growth")
 ```
 
-Kiva loans facility has grown over time since 2005, the earliest year in the data. It administered 55 loans in the year 2005 and did 170k in the last year.
-
-It seems to be starting to slow down in growth though in the last 2 years. Could this be due to competition from other microlenders?
+Kiva loans facility has grown over time since 2005, the earliest year in the data. It administered 55 loans in the year 2005 and did 170k in the last year. The rate of growth is however descreasing since 2014. Could this be due to competition from other microlenders?
 
 ```{r}
 trend_year_sector <- loans %>% group_by(year, sector) %>% summarise(n=n())
-trend_year_sector
+#trend_year_sector
 ```
 
-```{r, fig.width=12, fig.height=4}
+```{r, fig.width=12, fig.height=4, echo=FALSE}
 ggplot(trend_year_sector, aes(x=year, y=n, color=sector, fill=sector)) + 
     geom_line() +
     labs(x = "Year", y = "# Loans", title = "Loans Growth By Sector") +
-    theme(panel.border = element_rect(linetype = "solid", colour = "darkgreen", fill=NA, size = rel(1.2)),
-          plot.title = element_text(size = rel(1.5), hjust='0.5', margin = margin(0, 0, 10, 0, 'mm')),
-          panel.background = element_rect(fill = "white"),
-          panel.grid.major = element_line(colour = "darkgreen", linetype = "solid", size = rel(0.2)),
-          panel.grid.minor = element_line(colour = "darkgreen", linetype = "dotted", size = rel(0.2)),
-          axis.ticks = element_line(colour = "darkgreen", size = rel(1.2)),
-          axis.text.y = element_text(margin = margin(0, 2, 0, 5, 'mm')),
-          axis.text.x = element_text(margin = margin(2, 0, 5, 0, 'mm'))) +
+    theme(axis.text.x = element_text(angle=90, hjust=0, vjust=0, size=rel(1.2))) +
     facet_grid(. ~ sector)
 ```
 
-"Agriculture", "Food" and "Retail" have rapidly grown over the years. "Personal Use" was introduced last and has a pretty decent uptake. "Housing", "Education" and "Food" had brief negative growth at different times perahps due to fluctuation in building materials prices, access to state student loans or weather conditions respectively. "Wholesale" and "Retail" sectors have flat growth.
+"Agriculture", "Food" and "Retail" have rapidly grown over the years. "Personal Use" was introduced last and has a pretty rapid growth. "Housing", "Education" and "Food" had brief negative growth at different times perahps due to fluctuation in building materials prices, access to state student loans or weather conditions respectively. "Wholesale" and "Entertainment" sectors have flat growth.
 
-### Conclusion
+Analyzing each sector's descriptions:
+
+```{r}
+loan_use <- subset(loans, select=c("sector", "use"))
+data('stop_words')
+my_stop_words <- data_frame(word=c("buy", "purchase", "i.e", "sell"))
+word_count <- loan_use %>% 
+    unnest_tokens(word, use, drop=FALSE) %>% 
+    anti_join(stop_words) %>% 
+    anti_join(my_stop_words) %>% 
+    count(sector, word) %>% 
+    bind_tf_idf(word, sector, n) %>% 
+    group_by(sector) %>% 
+    top_n(10, tf_idf) %>% 
+    mutate(word = reorder(word, tf_idf))
+head(word_count)
+```
+
+```{r, fig.height=30, fig.width=10, echo=FALSE}
+ggplot(word_count, aes(reorder(word, tf_idf), tf_idf, fill = sector)) +
+    geom_bar(stat = "identity", show.legend = FALSE, width = 0.7) +
+    labs(x = NULL, y = "tf-idf") +
+    facet_wrap(~sector, ncol = 2, scales = "free") +
+    coord_flip()
+```
+
+From top keywords for "Agriculture" we infer that them main agricultural activities are cattle rearing and planting crop. For "Food" we can generally categorize items under fresh produce (vegetables, potatoes, onion), grains (sorghum, yeast), meat products (pork, fish) and spices. "Retail" on the other hand has items like shampoo, toiletries, slippers, spices, eggs, snack, charcoal and cigarette. From the analysis of the data, Kenya and Phillipines are the top countries. I can attest the keywords here are fairly good representation of what happens in my country.
+
+We also previously observed a recent rapid growth in the "Personal Use" sector. The keywords in this sector are filter, drinking and safe. These keywords are tied to safe drinking water. It seems like more loan applicants in this sector are looking for means to get clean drinking water. Does it mean water related diseases have been a menace and there is a campaign against them? Most likely this is the case. Chlorine is one of the keywords in the "Health" sector and it is mainly used for water purifiation. On the same breath, in "Housing" sector, latrine and sanitation are the top keywords. Proper sanitation and clean drinking water are main themes in the low income population.
+
+"Education" sector has keywords implying the loans in this sector are mainly used to pay for college tuition in the universities and vocational training centres.
+
+We can also infer that timber, stone and brick are common building materials used for construction.
+
+
+
+### 4. Conclusion
+
+1. Kiva plays a big role in bridging the financing gap for the underprivileged borrowers.
+2. From the analysis of the sectors we see how the loans help improve their lives through broad categories under health and sanitation, proper housing and thriving small businesses.
+3. The funding rate which stands at over 95% is quite impressive for this group of borrowers who do not use any collateral and entirely depend on the benevolence of the lenders. One of the objectives of this study had been to attempt to predict success in funding for loans. Very few loans are underfunded and this rendered the identified objective unintuitive.
+
+
+
+### 5. Further Work
+
+We can enhance this dataset by combining it with the lenders dataset and trying to uncover further insights in the context of lenders. Also other nice visualizations to add in the analysis would be geo-based visualization and a plot to show flow of money from lender countries to borrower countries and to the sectors.
