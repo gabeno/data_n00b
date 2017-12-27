@@ -1,0 +1,6 @@
+name: bunny
+dependencies:
+    - matplotlib
+    - numpy
+    - scikit-learn
+    - scipy
